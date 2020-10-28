@@ -1,5 +1,11 @@
 #!/bin/bash
-# shellcheck disable=SC2015
+# shellcheck disable=SC2015,SC2016
+
+ENVIN_HTTPS_REPOSITORY="https://github.com/Nephylhim/EnvIn.git"
+ENVIN_SSH_REPOSITORY="git@github.com:Nephylhim/EnvIn.git"
+ENVIN_DEFAULT_PATH="$HOME/.setup"
+DOTFILES_REPOSITORY="Nephylhim/dotfiles"
+DOTFILES_SSH_REPOSITORY="git@github.com:Nephylhim/dotfiles.git"
 
 set -e
 
@@ -10,6 +16,8 @@ GREEN=$'\e[1;32m'
 BLUE=$'\e[1;34m'
 YELLOW=$'\e[33m'
 NC=$'\e[0m'
+
+shell_dir="$(dirname "${BASH_SOURCE[0]}")"
 
 einfo() {
     echo -e "[${BLUE}INFO${NC}] $*"
@@ -24,7 +32,7 @@ eok() {
 }
 
 edebug() {
-    if [ debug = true ]; then
+    if $debug; then
         echo -e "[${YELLOW}DEBU${NC}]${YELLOW} $*${NC}"
     fi
 }
@@ -159,7 +167,50 @@ ensureDconfDirValues() {
     done
 }
 
+printNInstall() {
+    name=$1
+    cmd=$2
+
+    einfo "$name not installed. Installing..."
+    eval "$cmd"
+    eok "Installation successful: $name"
+}
+
 # ────────────────────────────────────────────────────────────────────────────────
+
+isInGitRepo() {
+    edebug "Shell dir: $shell_dir"
+    if [ ! -d .git ]; then
+        edebug "Script not in git dir"
+        return 0
+    fi
+    remoteURL=$(git config --get remote.origin.url)
+    if [[ $remoteURL != "$ENVIN_HTTPS_REPOSITORY" && $remoteURL != "$ENVIN_SSH_REPOSITORY" ]]; then
+        edebug "Script not in git dir"
+        return 0
+    fi
+
+    edebug "Script is in git dir"
+    return 1
+}
+
+ensureGitRepository() {
+    if ! isInGitRepo; then
+        eok "Script executed in repository. Continuing"
+        return 0
+    fi
+
+    einfo "Not in git repository. Retrieving it to have resources"
+    edebug "to path: $EnvInDirPath"
+    git clone "$ENVIN_HTTPS_REPOSITORY" "$EnvInDirPath"
+    # FIXME: Delete cp
+    cp "$shell_dir/$0" "$EnvInDirPath"
+    cd "$EnvInDirPath"
+    einfo "Setting push url to SSH URL"
+    git remote set-url origin "$ENVIN_SSH_REPOSITORY" --push
+    einfo "Relaunching EnvIn in git directory"
+    bash -c "$EnvInDirPath/$0"
+}
 
 installOhMyZSH() {
     einfo "Oh My Zsh not installed. Installing..."
@@ -179,16 +230,35 @@ installStarship() {
     eok "Installation successful: starship"
 }
 
+setupDotfiles() {
+    einfo "Retrieving dotfiles repository"
+    dot init "$DOTFILES_REPOSITORY"
+    cd "$HOME/.dotfiles"
+    einfo "Setting push url to SSH URL"
+    git remote set-url origin "$DOTFILES_SSH_REPOSITORY" --push
+    eok "Dotfiles repository retrieved"
+}
+
+linkDotfiles() {
+    einfo "Linking dotfiles"
+    dot link
+    eok "Dotfiles linked"
+}
+
 ensureTilixConfiguration() {
     dt='/com/gexperts/Tilix/'
     dtv=("terminal-title-style:'small'" "use-tabs:true" "theme-variant:'dark'" "control-scroll-zoom:true" "new-instance-mode:'new-session'" "window-style:'disable-csd-hide-toolbar'")
 
     dtk="${dt}keybindings/"
-    dtkv=("app-shortcuts:'F1'" "app-preferences:'<Primary><Shift>Escape'" "win-switch-to-previous-session:'<Primary><Shift>Tab'" "win-switch-to-next-session:'<Primary>Tab'" "session-switch-to-previous-terminal:''" "session-switch-to-next-terminal:''")
+    # dtkv=("app-shortcuts:'F1'" "app-preferences:'<Primary><Shift>Escape'" "win-switch-to-previous-session:['<Primary><Shift>Tab', '<Primary>Page_Up']" "win-switch-to-next-session:['<Primary>Tab', '<Primary>Page_Down']" "session-switch-to-previous-terminal:''" "session-switch-to-next-terminal:''")
+    # dtkv=("app-shortcuts:'F1'" "session-name:'F2'" "app-preferences:'<Primary><Shift>Escape'")
+    # dtkv=("app-shortcuts:'F1'" "session-name:'F2'" "win-switch-to-previous-session:['<Primary><Shift>Tab', '<Primary>Page_Up']" "app-preferences:'<Primary><Shift>Escape'" "win-switch-to-next-session:['<Primary>Tab', '<Primary>Page_Down']" "session-switch-to-previous-terminal:'disabled'" "session-switch-to-next-terminal:'disabled'")
+    dtkv=("app-shortcuts:'F1'" "session-name:'F2'" "win-switch-to-previous-session:'<Primary><Shift>Tab'" "app-preferences:'<Primary><Shift>Escape'" "win-switch-to-next-session:'<Primary>Tab'" "session-switch-to-previous-terminal:'disabled'" "session-switch-to-next-terminal:'disabled'")
 
     dtpid=$(dconf list ${dt}profiles/ | head -n1)
     dtp="${dt}profiles/$dtpid"
-    dtpv=("background-color:'#2E2E34343636'" "palette:['#2E2E34343636', '#CCCC00000000', '#4E4E9A9A0606', '#C4C4A0A00000', '#34346565A4A4', '#ADAD4040DFDF', '#060698209A9A', '#D3D3D7D7CFCF', '#555557575353', '#EFEF29292929', '#8A8AE2E23434', '#FCFCE9E94F4F', '#72729F9FCFCF', '#ADAD7F7FA8A8', '#3434E2E2E2E2', '#EEEEEEEEECEC']" "use-theme-colors:false" "cursor-shape:'ibeam'" "text-blink-mode:'unfocused'" "use-system-font:false" "font:'DroidSansMono Nerd Font Mono 12'")
+    # dtpv=("background-color:'#2E2E34343636'" "palette:['#2E2E34343636', '#CCCC00000000', '#4E4E9A9A0606', '#C4C4A0A00000', '#34346565A4A4', '#ADAD4040DFDF', '#060698209A9A', '#D3D3D7D7CFCF', '#555557575353', '#EFEF29292929', '#8A8AE2E23434', '#FCFCE9E94F4F', '#72729F9FCFCF', '#ADAD7F7FA8A8', '#3434E2E2E2E2', '#EEEEEEEEECEC']" "use-theme-colors:false" "cursor-shape:'ibeam'" "text-blink-mode:'unfocused'" "use-system-font:false" "font:'DroidSansMono Nerd Font Mono 12'")
+    dtpv=("foreground-color:'#F3F3F3F3F3F3'" "text-blink-mode:'unfocused'" "visible-name:'Default'" "palette:['#252525', '#FF5252', '#C3D82C', '#FFC135', '#42A5F5', '#D81B60', '#00ACC1', '#F5F5F5', '#708284', '#FF5252', '#C3D82C', '#FFC135', '#42A5F5', '#D81B60', '#00ACC1', '#F5F5F5']" "badge-color-set:false" "cursor-background-color:'#EFEF29292929'" "cursor-shape:'ibeam'" "cursor-colors-set:true" "highlight-colors-set:false" "use-system-font:false" "bold-color-set:false" "font:'DroidSansMono Nerd Font 12'" "use-theme-colors:false" "highlight-background-color:'#72729F9FCFCF'" "background-color:'#263238'" "background-transparency-percent:0" "dim-transparency-percent:0")
 
     ensureDconfDirValues "$dt" "${dtv[@]}"
     ensureDconfDirValues "$dtk" "${dtkv[@]}"
@@ -213,7 +283,7 @@ ensureGnomeConfiguration() {
 
     # keybindings
     keybindingsPath='/org/gnome/desktop/wm/keybindings/'
-    keybindingsValues=("move-to-workspace-up:['<Shift><Super>Up']" "move-to-workspace-1:['<Shift><Super>exclam']" "move-to-workspace-2:['<Shift><Super>at']" "move-to-workspace-3:['<Shift><Super>numbersign']" "move-to-workspace-4:['<Shift><Super>dollar']" "move-to-workspace-5:['<Shift><Super>percent']" "move-to-workspace-6:['<Shift><Super>dead_circumflex']" "move-to-workspace-7:['<Shift><Super>ampersand']" "move-to-workspace-8:['<Shift><Super>asterisk']" "move-to-workspace-9:['<Shift><Super>parenright']" "switch-to-workspace-1:['<Super>1']" "switch-to-workspace-2:['<Super>2']" "switch-to-workspace-3:['<Super>3']" "switch-to-workspace-4:['<Super>4']" "switch-to-workspace-5:['<Super>5']" "switch-to-workspace-6:['<Super>6']" "switch-to-workspace-7:['<Super>7']" "switch-to-workspace-8:['<Super>8']" "switch-to-workspace-9:['<Super>9']" "switch-to-workspace-down:['<Primary><Super>Down']" "move-to-monitor-down:@as []" "move-to-workspace-down:['<Shift><Super>Down']" "toggle-on-all-workspaces:['<Super>Return']" "move-to-monitor-up:@as []" "switch-to-workspace-up:['<Primary><Super>Up']")
+    keybindingsValues=("move-to-workspace-up:['<Shift><Super>Up']" "move-to-workspace-1:['<Shift><Super>exclam']" "move-to-workspace-2:['<Shift><Super>at']" "move-to-workspace-3:['<Shift><Super>numbersign']" "move-to-workspace-4:['<Shift><Super>dollar']" "move-to-workspace-5:['<Shift><Super>percent']" "move-to-workspace-6:['<Shift><Super>dead_circumflex']" "move-to-workspace-7:['<Shift><Super>ampersand']" "move-to-workspace-8:['<Shift><Super>asterisk']" "move-to-workspace-9:['<Shift><Super>parenright']" "switch-to-workspace-1:['<Super>1']" "switch-to-workspace-2:['<Super>2']" "switch-to-workspace-3:['<Super>3']" "switch-to-workspace-4:['<Super>4']" "switch-to-workspace-5:['<Super>5']" "switch-to-workspace-6:['<Super>6']" "switch-to-workspace-7:['<Super>7']" "switch-to-workspace-8:['<Super>8']" "switch-to-workspace-9:['<Super>9']" "switch-to-workspace-down:['<Primary><Super>Down', '<Super>Page_Down']" "move-to-monitor-down:@as []" "move-to-workspace-down:['<Shift><Super>Down']" "toggle-on-all-workspaces:['<Super>Return']" "move-to-monitor-up:@as []" "switch-to-workspace-up:['<Primary><Super>Up', '<Super>Page_Up']")
     ensureDconfDirValues "$keybindingsPath" "${keybindingsValues[@]}"
 
     # keyboard conf
@@ -235,17 +305,19 @@ ensureGnomeConfiguration() {
 
 # ────────────────────────────────────────────────────────────────────────────────
 
-main() {
-    debug=false
+init() {
+    EnvInDirPath="$ENVIN_DEFAULT_PATH"
+    cd "$shell_dir"
 
     verify_admin
+}
 
+full_install() {
     # CLI utils
     echo -e "\n### CLI utils"
     verifyCmd "curl"
     verifyCmd "wget"
     verifyCmd "vim"
-    verifyCmd "git"
     verifyCmd "jq"
     verifyCmd "tree"
     verifyCmd "ping" "iputils-ping"
@@ -261,6 +333,7 @@ main() {
     verifyCargoCmd "delta" "git-delta"
     verifyCargoCmd "watchexec"
     verifyCargoCmd "dot" "--git https://github.com/ubnt-intrepid/dot.git"
+    verifyCargoCmd "rip" "rm-improved"
 
     # Shell
     echo -e "\n### Shell"
@@ -268,19 +341,24 @@ main() {
     ensureTilixConfiguration
     verifyCmd "zsh"
     dirExists "$HOME/.oh-my-zsh" && eok "oh-my-zsh installed" || installOhMyZSH
+    # dirExists "$ZSH/custom/plugins/zsh-autosuggestions" && eok "oh-my-zsh installed" || installOMZAutoSuggest
+    dirExists "$ZSH/custom/plugins/zsh-autosuggestions" && eok "OMZ autosuggestions installed" || printNInstall "OMZ autosuggestions" 'git clone https://github.com/zsh-users/zsh-autosuggestions "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"/plugins/zsh-autosuggestions'
     cmdExists "starship" && eok "starship installed" || installStarship
+    dirExists "$HOME/.dotfiles" && eok "Dotfiles directory present" || setupDotfiles
+    dot check && eok "dotfiles synced correctly" || linkDotfiles
+
+    # Desktop Environment
+    echo -e "\n### Desktop environment"
+    ensureGnomeConfiguration
 
     # Config
     echo -e "\n### Configuration"
     dirExists "$HOME/opt" && eok "local opt directory exists" || mkdir -p "$HOME/opt"
     dirExists "$HOME/bin" && eok "local bin directory exists" || mkdir -p "$HOME/bin"
 
-    # TODO: dotfiles / synced files
-    # install dot
-    # dot init Nephylhim/dotfiles
-    # dot link
-    # dot check
-    # TODO: git config
+    # TEST: dotfiles / synced files
+    # TEST: git remote set-url origin git@github.com:Nephylhim/dotfiles.git --push
+    # TEST: git config
 
     # TODO: my tools
     # TEST: cargo bins
@@ -294,6 +372,18 @@ main() {
     # TODO: retrieve last version of vscode
     # TODO: vscode conf + extensions
     # TODO: fonts (fixed mono font)
+    # TODO: redo color palette tilix + bg
+    # TEST: git remote set-url origin git@github.com:Nephylhim/envin.git --push
+}
+
+main() {
+    debug=true
+    init
+
+    verifyCmd "git"
+    ensureGitRepository
+
+    full_install
 }
 
 main
