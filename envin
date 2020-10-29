@@ -99,18 +99,18 @@ verifyCmd() {
 verifyCargoCmd() {
     cmd=$1
     if [[ $2 != "" ]]; then
-        crate=$2
+        crate=("${@:2}")
     else
-        crate=$1
+        crate=("$1")
     fi
     edebug "Verifying cmd $cmd is installed"
-    edebug "Crate name: $crate"
+    edebug "Crate name: ${crate[*]}"
 
     if cmdExists "$cmd"; then
         eok "$cmd installed"
     else
         edebug "Command not installed, installing it"
-        cargoInstall "$crate"
+        cargoInstall "${crate[@]}"
     fi
 }
 
@@ -326,11 +326,11 @@ full_install() {
     echo -e "\n### Rust CLI utils"
     cmdExists "cargo" && eok "cargo installed" || installCargo
     verifyCargoCmd "exa"
-    verifyCargoCmd "bat" "--locked bat"
+    verifyCargoCmd "bat" "--locked" "bat"
     verifyCargoCmd "eva"
     verifyCargoCmd "delta" "git-delta"
     verifyCargoCmd "watchexec"
-    verifyCargoCmd "dot" "--git https://github.com/ubnt-intrepid/dot.git"
+    verifyCargoCmd "dot" "--git" "https://github.com/ubnt-intrepid/dot.git"
     verifyCargoCmd "rip" "rm-improved"
 
     # Shell
