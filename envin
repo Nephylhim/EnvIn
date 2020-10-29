@@ -207,7 +207,7 @@ ensureGitRepository() {
     einfo "Setting push url to SSH URL"
     git remote set-url origin "$ENVIN_SSH_REPOSITORY" --push
     einfo "Relaunching EnvIn in git directory"
-    bash -c "$EnvInDirPath/$0"
+    bash -c "$EnvInDirPath/envin"
 }
 
 installOhMyZSH() {
