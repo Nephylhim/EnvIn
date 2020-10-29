@@ -203,8 +203,6 @@ ensureGitRepository() {
     einfo "Not in git repository. Retrieving it to have resources"
     edebug "to path: $EnvInDirPath"
     git clone "$ENVIN_HTTPS_REPOSITORY" "$EnvInDirPath"
-    # FIXME: Delete cp
-    cp "$shell_dir/$0" "$EnvInDirPath"
     cd "$EnvInDirPath"
     einfo "Setting push url to SSH URL"
     git remote set-url origin "$ENVIN_SSH_REPOSITORY" --push
@@ -377,7 +375,7 @@ full_install() {
 }
 
 main() {
-    debug=true
+    debug=false
     init
 
     verifyCmd "git"
