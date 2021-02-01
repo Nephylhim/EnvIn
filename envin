@@ -3,9 +3,10 @@
 
 ENVIN_HTTPS_REPOSITORY="https://github.com/Nephylhim/EnvIn.git"
 ENVIN_SSH_REPOSITORY="git@github.com:Nephylhim/EnvIn.git"
-ENVIN_DEFAULT_PATH="$HOME/.setup"
+ENVIN_DEFAULT_PATH="$HOME/.envin"
 DOTFILES_REPOSITORY="Nephylhim/dotfiles"
 DOTFILES_SSH_REPOSITORY="git@github.com:Nephylhim/dotfiles.git"
+SOFT_INSTALL_DIR="$HOME/opt"
 
 set -e
 
@@ -178,6 +179,15 @@ printNInstall() {
 
 # ────────────────────────────────────────────────────────────────────────────────
 
+ensurePackages() {
+    while IFS='' read -r line || [[ -n "$line" ]]; do
+        name=$(cut -d: -f1 <<<"$line")
+        package=$(cut -d: -f2 <<<"$line")
+
+        verifyCmd "$name" "$package"
+    done <'packages'
+}
+
 isInGitRepo() {
     edebug "Shell dir: $shell_dir"
     if [ ! -d .git ]; then
@@ -208,31 +218,35 @@ ensureGitRepository() {
     git remote set-url origin "$ENVIN_SSH_REPOSITORY" --push
     einfo "Relaunching EnvIn in git directory"
     bash -c "$EnvInDirPath/envin"
+
+    # EnvIn runned in git repository, this instance can now exit without error
+    exit 0
 }
 
 installOhMyZSH() {
     einfo "Oh My Zsh not installed. Installing..."
+    export RUNZSH='no'
     sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
     eok "Installation successful: Oh My Zsh"
 }
 
 installCargo() {
     einfo "cargo not installed. Installing rust env..."
-    curl https://sh.rustup.rs -sSf | sh
+    curl https://sh.rustup.rs -sSf | sh -s -- -y
     eok "Installation successful: rust env"
 }
 
 installStarship() {
     einfo "starship not installed. Installing starship..."
-    curl -fsSL https://starship.rs/install.sh | bash
+    curl -fsSL https://starship.rs/install.sh | bash -s -- -f
     eok "Installation successful: starship"
 }
 
 setupDotfiles() {
-    einfo "Retrieving dotfiles repository"
+    einfo "Retrieving dotfiles repository..."
     dot init "$DOTFILES_REPOSITORY"
     cd "$HOME/.dotfiles"
-    einfo "Setting push url to SSH URL"
+    einfo "Setting push url to SSH URL..."
     git remote set-url origin "$DOTFILES_SSH_REPOSITORY" --push
     eok "Dotfiles repository retrieved"
 }
@@ -241,6 +255,14 @@ linkDotfiles() {
     einfo "Linking dotfiles"
     dot link
     eok "Dotfiles linked"
+}
+
+installDSMNerdFont() {
+    einfo "Installing DroidSansMono Nerd font..."
+    mkdir -p "$HOME/.local/share/fonts"
+    cd "$HOME/.local/share/fonts"
+    curl -fLo "Droid Sans Mono for Powerline Nerd Font Complete.otf" https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/DroidSansMono/complete/Droid%20Sans%20Mono%20Nerd%20Font%20Complete.otf
+    eok "Installation successful: DroidSansMono Nerd font"
 }
 
 ensureTilixConfiguration() {
@@ -301,6 +323,30 @@ ensureGnomeConfiguration() {
     ensureDconfDirValues "$custom1Path" "${custom1Values[@]}"
 }
 
+installDesktopTheme() {
+    einfo "Installing Desktop theme..."
+    mkdir -p "$SOFT_INSTALL_DIR"
+    cd "$SOFT_INSTALL_DIR"
+    git clone https://github.com/vinceliuice/Matcha-gtk-theme.git
+    cd Matcha-gtk-theme
+    ./install.sh
+    eok "Installation successful: Desktop theme"
+}
+
+installIconTheme() {
+    einfo "Installing icon theme..."
+    mkdir -p "$HOME/.local/share/icons"
+    cd "$HOME/.local/share/icons"
+    git clone https://github.com/zayronxio/Zafiro-icons.git
+    eok "Installation successful: icon theme"
+}
+
+ensureGnomeStyle() {
+    ensureDconfValue '/org/gnome/desktop/interface/gtk-theme' 'Matcha-dark-azul'
+    ensureDconfValue '/org/gnome/shell/extensions/user-theme/name' 'Matcha-dark-azul'
+    ensureDconfValue '/org/gnome/desktop/interface/icon-theme' 'Zafiro-icons'
+}
+
 # ────────────────────────────────────────────────────────────────────────────────
 
 init() {
@@ -313,14 +359,15 @@ init() {
 full_install() {
     # CLI utils
     echo -e "\n### CLI utils"
-    verifyCmd "curl"
-    verifyCmd "wget"
-    verifyCmd "vim"
-    verifyCmd "jq"
-    verifyCmd "tree"
-    verifyCmd "ping" "iputils-ping"
-    verifyCmd "rg" "ripgrep"
-    verifyCmd "/usr/bin/fdfind" "fd-find"
+    # verifyCmd "curl"
+    # verifyCmd "wget"
+    # verifyCmd "vim"
+    # verifyCmd "jq"
+    # verifyCmd "tree"
+    # verifyCmd "ping" "iputils-ping"
+    # verifyCmd "rg" "ripgrep"
+    # verifyCmd "/usr/bin/fdfind" "fd-find"
+    ensurePackages
 
     # Rust CLI utils
     echo -e "\n### Rust CLI utils"
@@ -335,6 +382,7 @@ full_install() {
 
     # Shell
     echo -e "\n### Shell"
+    fileExists "$HOME/.local/share/fonts/Droid Sans Mono Nerd Font Complete.otf" || installDSMNerdFont
     verifyCmd "tilix"
     ensureTilixConfiguration
     verifyCmd "zsh"
@@ -347,6 +395,9 @@ full_install() {
 
     # Desktop Environment
     echo -e "\n### Desktop environment"
+    dirExists "$HOME/.themes/Matcha-dark-azul" || installDesktopTheme
+    dirExists "$HOME/.local/share/icons/Zafiro-icons" || installIconTheme
+    ensureGnomeStyle
     ensureGnomeConfiguration
 
     # Config
@@ -359,19 +410,24 @@ full_install() {
     # TEST: git config
 
     # TODO: my tools
+    # TEST: new package list
     # TEST: cargo bins
-    # GO bins
-    # go get -u github.com/charmbracelet/glow
+    # TODO: GO bins/env
+    # TODO: go get -u github.com/charmbracelet/glow
     # TEST: gnome configuration / keybindings (via dconf / gsettings)
     # TODO: regarder gsettings
-    # TODO: gnome tweak tools + extensions + conf bureaux
+    # TODO: gnome tweak tools + extensions + conf bureaux (theme/icons)
     # TEST: clavier us-int + fr (/org/gnome/desktop/input-sources/ ?)
     # verifyCmd "code" # Installed w/ dpkg by retrieving deb file on website
     # TODO: retrieve last version of vscode
     # TODO: vscode conf + extensions
-    # TODO: fonts (fixed mono font)
-    # TODO: redo color palette tilix + bg
+    # TODO: vim (vimrc+plugins)
+    # TEST: fonts (fixed mono font)
+    # TEST: redo color palette tilix + bg
     # TEST: git remote set-url origin git@github.com:Nephylhim/envin.git --push
+    # TEST: install rust full auto (-y ? -f ?)
+    # TEST: install OMZ full auto (auto change shell [maybe another step in the script]. But don't enter zsh, we want to finish setup)
+    # TEST: install starship full auto (in /usr/local/bin or user land?)
 }
 
 main() {
