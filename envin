@@ -90,6 +90,11 @@ verify_admin() {
     fi
 }
 
+update_system() {
+    sudo apt update
+    sudo apt upgrade
+}
+
 verifyCmd() {
     cmd=$1
     if [[ $2 != "" ]]; then
@@ -365,6 +370,7 @@ init() {
     cd "$shell_dir"
 
     verify_admin
+    update_system
 }
 
 full_install() {
