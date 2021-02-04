@@ -70,12 +70,22 @@ dirExists() {
 # }
 
 verify_admin() {
-    # if groups "$USER" | grep -q sudo; then
-    einfo "Verifying user is sudo. You may have to enter your sudo password"
+    # sudo group line in /etc/group
+    sudoGrp=$(grep '^sudo:' </etc/group)
+
+    # verify that the user is present in the sudo group line
+    if ! grep -Eq "${USER}[,\n]" <<<"$sudoGrp\n"; then
+        einfo "User $USER is not sudoer, adding it to sudoers using 'su' command. You'll have to enter root password"
+        su -c "usermod -aG sudo '$USER'"
+        eok "User $USER added to sudoers"
+    fi
+
+    einfo "Verifying user can sudo. You may have to enter your sudo password"
     if sudo true; then
         eok "User is sudoer"
     else
         efail "User is not sudoer. This script must use sudo to work properly"
+        exit 1
     fi
 }
 
