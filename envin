@@ -76,7 +76,8 @@ verify_admin() {
     # verify that the user is present in the sudo group line
     if ! grep -Eq "${USER}[,\n]" <<<"$sudoGrp\n"; then
         einfo "User $USER is not sudoer, adding it to sudoers using 'su' command. You'll have to enter root password"
-        su -c "usermod -aG sudo '$USER'"
+        # su -c "usermod -aG sudo '$USER'" # This doesn't work great as the user would need to log out before being able to use sudo...
+        su -c "echo '$USER  ALL=(ALL) ALL' >> /etc/sudoers"
         eok "User $USER added to sudoers"
     fi
 
