@@ -9,3 +9,6 @@
 * dotfiles. sync?
 * update system?
 
+## Sync
+
+* update vscode extensions

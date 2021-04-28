@@ -91,7 +91,7 @@ verify_admin() {
 }
 
 sudoer_file_remove_user() {
-    sed -Ei "/^${USER}[\t ]+ALL/d" '/etc/sudoers'
+    sudo sed -Ei "/^${USER}[\t ]+ALL/d" '/etc/sudoers'
 }
 
 update_system() {
@@ -113,7 +113,7 @@ verifyCmd() {
         eok "$cmd installed"
     else
         edebug "Command not installed, installing it"
-        install "$pkg"
+        installPkg "$pkg"
     fi
 }
 
@@ -135,7 +135,7 @@ verifyCargoCmd() {
     fi
 }
 
-install() {
+installPkg() {
     einfo "$* not installed. Installing..."
     sudo apt install -y "$@"
     eok "Installation successful: $*"
@@ -201,11 +201,30 @@ printNInstall() {
 
 ensurePackages() {
     while IFS='' read -r line || [[ -n "$line" ]]; do
+        if grep -qP '^(?:#|\/\/)' <<<"$extension"; then
+            continue
+        fi
+
         name=$(cut -d: -f1 <<<"$line")
         package=$(cut -d: -f2 <<<"$line")
 
         verifyCmd "$name" "$package"
-    done <'packages'
+    done <'packages.cfg'
+}
+
+ensureCargoBins() {
+    while IFS='' read -r line || [[ -n "$line" ]]; do
+        if grep -qP '^(?:#|\/\/)' <<<"$extension"; then
+            continue
+        fi
+
+        cmd=$(cut -d: -f1 <<<"$line")
+        # shellcheck disable=SC2178
+        crate=$(cut -d: -f2 <<<"$line")
+
+        # shellcheck disable=SC2086,SC2128
+        verifyCargoCmd "$cmd" $crate
+    done <'cargo_bins.cfg'
 }
 
 isInGitRepo() {
@@ -293,7 +312,7 @@ ensureTilixConfiguration() {
     # dtkv=("app-shortcuts:'F1'" "app-preferences:'<Primary><Shift>Escape'" "win-switch-to-previous-session:['<Primary><Shift>Tab', '<Primary>Page_Up']" "win-switch-to-next-session:['<Primary>Tab', '<Primary>Page_Down']" "session-switch-to-previous-terminal:''" "session-switch-to-next-terminal:''")
     # dtkv=("app-shortcuts:'F1'" "session-name:'F2'" "app-preferences:'<Primary><Shift>Escape'")
     # dtkv=("app-shortcuts:'F1'" "session-name:'F2'" "win-switch-to-previous-session:['<Primary><Shift>Tab', '<Primary>Page_Up']" "app-preferences:'<Primary><Shift>Escape'" "win-switch-to-next-session:['<Primary>Tab', '<Primary>Page_Down']" "session-switch-to-previous-terminal:'disabled'" "session-switch-to-next-terminal:'disabled'")
-    dtkv=("app-shortcuts:'F1'" "session-name:'F2'" "win-switch-to-previous-session:'<Primary><Shift>Tab'" "app-preferences:'<Primary><Shift>Escape'" "win-switch-to-next-session:'<Primary>Tab'" "session-switch-to-previous-terminal:'disabled'" "session-switch-to-next-terminal:'disabled'")
+    dtkv=("app-shortcuts:'F1'" "session-name:'F2'" "win-switch-to-previous-session:'<Primary>Page_Up'" "app-preferences:'<Primary><Shift>Escape'" "win-switch-to-next-session:'<Primary>Page_Down'" "session-switch-to-previous-terminal:'disabled'" "session-switch-to-next-terminal:'disabled'")
 
     dtpid=$(dconf list ${dt}profiles/ | head -n1)
     dtp="${dt}profiles/$dtpid"
@@ -341,6 +360,10 @@ ensureGnomeConfiguration() {
     custom1Path='/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1/'
     custom1Values=("binding:'<Primary>dead_grave'" "command:'tilix --quake'" "name:'tilix quake'")
     ensureDconfDirValues "$custom1Path" "${custom1Values[@]}"
+    custom2Path='/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2/'
+    custom2Values=("binding:'<Primary>escape'" "command:'tilix --quake'" "name:'tilix quake 2'")
+    ensureDconfDirValues "$custom2Path" "${custom2Values[@]}"
+    # TODO: extract custom commands in a separate file to make it more generic
 }
 
 installDesktopTheme() {
@@ -362,10 +385,35 @@ installIconTheme() {
 }
 
 ensureGnomeStyle() {
-    ensureDconfValue '/org/gnome/desktop/interface/gtk-theme' 'Matcha-dark-azul' # FIXME: not working. gtk-theme register not set up
+    ensureDconfValue '/org/gnome/desktop/interface/gtk-theme' "'Matcha-dark-azul'" # FIXME: not working. gtk-theme register not set up
     # because extension "User themes" isn't enabled?
-    ensureDconfValue '/org/gnome/shell/extensions/user-theme/name' 'Matcha-dark-azul'
-    ensureDconfValue '/org/gnome/desktop/interface/icon-theme' 'Zafiro-icons'
+    ensureDconfValue '/org/gnome/shell/extensions/user-theme/name' "'Matcha-dark-azul'"
+    ensureDconfValue '/org/gnome/desktop/interface/icon-theme' "'Zafiro-icons'"
+}
+
+installVSCode() {
+    wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor >packages.microsoft.gpg
+    sudo install -o root -g root -m 644 packages.microsoft.gpg /etc/apt/trusted.gpg.d/
+    sudo sh -c 'echo "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/packages.microsoft.gpg] https://packages.microsoft.com/repos/vscode stable main" > /etc/apt/sources.list.d/vscode.list'
+    sudo apt update
+    sudo apt install code -y
+}
+
+ensureVSCodeExtensions() {
+    extensions="$(code --list-extensions)"
+
+    while IFS='' read -r extension || [[ -n "$extension" ]]; do
+        if grep -qP '^(?:#|\/\/)' <<<"$extension"; then
+            continue
+        fi
+
+        if [[ $extensions == *"${extension}"* ]]; then
+            eok "Extension $extension is already installed"
+        else
+            einfo "Installing $extension"
+            code --install-extension "$extension"
+        fi
+    done <'vscode_extensions.cfg'
 }
 
 # ────────────────────────────────────────────────────────────────────────────────
@@ -374,6 +422,7 @@ init() {
     EnvInDirPath="$ENVIN_DEFAULT_PATH"
     cd "$shell_dir"
 
+    # TODO: verify envin is not launched as sudo
     verify_admin
     update_system
 }
@@ -394,13 +443,14 @@ full_install() {
     # Rust CLI utils
     echo -e "\n### Rust CLI utils"
     cmdExists "cargo" && eok "cargo installed" || installCargo
-    verifyCargoCmd "exa"
-    verifyCargoCmd "bat" "--locked" "bat"
-    verifyCargoCmd "eva"
-    verifyCargoCmd "delta" "git-delta"
-    verifyCargoCmd "watchexec"
-    verifyCargoCmd "dot" "--git" "https://github.com/ubnt-intrepid/dot.git"
-    verifyCargoCmd "rip" "rm-improved"
+    # verifyCargoCmd "exa"
+    # verifyCargoCmd "bat" "--locked" "bat"
+    # verifyCargoCmd "eva"
+    # verifyCargoCmd "delta" "git-delta"
+    # verifyCargoCmd "watchexec"
+    # verifyCargoCmd "dot" "--git" "https://github.com/ubnt-intrepid/dot.git"
+    # verifyCargoCmd "rip" "rm-improved"
+    ensureCargoBins
 
     # Shell
     echo -e "\n### Shell"
@@ -427,6 +477,10 @@ full_install() {
     dirExists "$HOME/opt" && eok "local opt directory exists" || mkdir -p "$HOME/opt"
     dirExists "$HOME/bin" && eok "local bin directory exists" || mkdir -p "$HOME/bin"
 
+    # VSCode
+    verifyCmd "code" || installVSCode
+    ensureVSCodeExtensions
+
     # TEST: dotfiles / synced files
     # TEST: git remote set-url origin git@github.com:Nephylhim/dotfiles.git --push
     # TEST: git config
@@ -440,8 +494,8 @@ full_install() {
     # TODO: gnome tweak tools + extensions + conf bureaux (theme/icons)
     # TEST: clavier us-int + fr (/org/gnome/desktop/input-sources/ ?)
     # verifyCmd "code" # Installed w/ dpkg by retrieving deb file on website
-    # TODO: retrieve last version of vscode
-    # TODO: vscode conf + extensions
+    # TEST: retrieve last version of vscode
+    # TEST: vscode conf + extensions
     # TODO: vim (vimrc+plugins)
     # TEST: fonts (fixed mono font)
     # TEST: redo color palette tilix + bg
@@ -449,9 +503,11 @@ full_install() {
     # TEST: install OMZ full auto (auto change shell [maybe another step in the script]. But don't enter zsh, we want to finish setup) => ask if we want to change default shell
     # TEST: install starship full auto (in /usr/local/bin or user land?)
     # TEST: user is removed from sudoer file if temporarily added
+    # TODO: brew + brew bins
 
     # TODO: adapt for arch/manjaro
-    # TODO: --no-graphic mode (no gnome / vscode setup)
+    # TODO: --no-graphic mode (no gnome / vscode setup) / profils
+    # TODO: change arch to work with plugins?
 }
 
 main() {
