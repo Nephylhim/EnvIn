@@ -76,8 +76,8 @@ verify_admin() {
     # verify that the user is present in the sudo group line
     if ! grep -Eq "${USER}[,\n]" <<<"$sudoGrp\n"; then
         einfo "User $USER is not sudoer, adding it to sudoers using 'su' command. You'll have to enter root password"
-        # su -c "usermod -aG sudo '$USER'" # This doesn't work great as the user would need to log out before being able to use sudo...
         su -c "echo '$USER  ALL=(ALL) ALL' >> /etc/sudoers"
+        sudo -c "usermod -aG sudo '$USER'" # This doesn't work as is, as the user would need to log out before being able to use sudo. This method is more clean and so the user is added to the group. However the user is also temporarily added in the sudoer file in order to continue the script
         eok "User $USER added to sudoers"
     fi
 
@@ -88,6 +88,10 @@ verify_admin() {
         efail "User is not sudoer. This script must use sudo to work properly"
         exit 1
     fi
+}
+
+sudoer_file_remove_user() {
+    sed -Ei "/^${USER}[\t ]+ALL/d" '/etc/sudoers'
 }
 
 update_system() {
@@ -358,7 +362,8 @@ installIconTheme() {
 }
 
 ensureGnomeStyle() {
-    ensureDconfValue '/org/gnome/desktop/interface/gtk-theme' 'Matcha-dark-azul'
+    ensureDconfValue '/org/gnome/desktop/interface/gtk-theme' 'Matcha-dark-azul' # FIXME: not working. gtk-theme register not set up
+    # because extension "User themes" isn't enabled?
     ensureDconfValue '/org/gnome/shell/extensions/user-theme/name' 'Matcha-dark-azul'
     ensureDconfValue '/org/gnome/desktop/interface/icon-theme' 'Zafiro-icons'
 }
@@ -427,7 +432,6 @@ full_install() {
     # TEST: git config
 
     # TODO: my tools
-    # TEST: new package list
     # TEST: cargo bins
     # TODO: GO bins/env
     # TODO: go get -u github.com/charmbracelet/glow
@@ -442,9 +446,12 @@ full_install() {
     # TEST: fonts (fixed mono font)
     # TEST: redo color palette tilix + bg
     # TEST: git remote set-url origin git@github.com:Nephylhim/envin.git --push
-    # TEST: install rust full auto (-y ? -f ?)
-    # TEST: install OMZ full auto (auto change shell [maybe another step in the script]. But don't enter zsh, we want to finish setup)
+    # TEST: install OMZ full auto (auto change shell [maybe another step in the script]. But don't enter zsh, we want to finish setup) => ask if we want to change default shell
     # TEST: install starship full auto (in /usr/local/bin or user land?)
+    # TEST: user is removed from sudoer file if temporarily added
+
+    # TODO: adapt for arch/manjaro
+    # TODO: --no-graphic mode (no gnome / vscode setup)
 }
 
 main() {
@@ -455,6 +462,7 @@ main() {
     ensureGitRepository
 
     full_install
+    sudoer_file_remove_user
 }
 
 main
