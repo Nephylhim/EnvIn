@@ -498,6 +498,19 @@ ensureGoPackages() {
     done
 }
 
+ensureGnomeShellExtensions() {
+    extensions=()
+    listCfgValues extensions 'gnome_extensions.cfg'
+    for line in "${extensions[@]}"; do
+        extensionID="$(cut -d':' -f1 <<<"$line")"
+        extensionName="$(cut -d':' -f2 <<<"$line")"
+
+        einfo "(Re)installing extension $extensionName ($extensionID)"
+        ./gnome-shell-extension-installer/gnome-shell-extension-installer "$extensionID"
+        eok "Extension $extensionName installed"
+    done
+}
+
 # ────────────────────────────────────────────────────────────────────────────────
 
 init() {
@@ -553,6 +566,10 @@ full_install() {
     dirExists "$HOME/.local/share/icons/Zafiro-icons" || installIconTheme
     ensureGnomeStyle
     ensureGnomeConfiguration
+
+    # Gnome Shell extensions
+    echo -e "\n### Gnome Shell extensions"
+    test -d ./gnome-shell-extension-installer && ensureGnomeShellExtensions
 
     # Config
     echo -e "\n### Configuration"
