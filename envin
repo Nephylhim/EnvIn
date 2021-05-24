@@ -8,7 +8,7 @@ DOTFILES_REPOSITORY="Nephylhim/dotfiles"
 DOTFILES_SSH_REPOSITORY="git@github.com:Nephylhim/dotfiles.git"
 SOFT_INSTALL_DIR="$HOME/opt"
 
-set -euo pipefail
+set -eo pipefail
 
 PATH=$PATH:/sbin:/usr/sbin:$HOME/go/bin:/usr/local/go/bin:$HOME/gittools:$HOME/bin:$HOME/.cargo/bin:$HOME/.local/bin
 
@@ -452,6 +452,50 @@ ensureBrewFormulaes() {
     done <'brew_formulaes.cfg'
 }
 
+installGo() {
+    einfo "Installing Go..."
+    dlPath="$(curl -s "https://golang.org/dl/" |
+        grep -P '<a class="download downloadBox" href="([^"]+)">' |
+        grep "linux-amd64" |
+        sed -E 's|<a class="download downloadBox" href="([^"]+)">|\1|')"
+
+    url="https://golang.org${dlPath}"
+    einfo "Installing go using: $url"
+
+    tmpDir="$(mktemp -d)"
+    edebug "tmpDir: $tmpDir"
+    cd "$tmpDir"
+    einfo "Downloading go archive..."
+    curl -LOJs "$url"
+    einfo "archive downloaded..."
+    archiveName="$(ls)"
+
+    sudo rm -rf /usr/local/go && tar -C /usr/local -xzf "$archiveName"
+    cd - &>/dev/null
+    rm -rf "$tmpDir"
+    eok "Go installed"
+}
+
+ensureGoPackages() {
+    gp="${GOPATH:-$HOME/go}/src"
+    while IFS='' read -r package || [[ -n "$package" ]]; do
+        if grep -qP '^(?:#|\/\/)' <<<"$package"; then
+            continue
+        fi
+
+        pBase=$(cut -d' ' -f1 <<<"$package" | awk -F '/' '{print $1"/"$2"/"$3}')
+
+        if test -d "$gp/$pBase"; then
+            eok "Go package $pBase is already installed"
+        else
+            einfo "Installing $pBase"
+            #shellcheck disable=SC2086
+            go get $package
+            eok "Go package $pBase installed successfully"
+        fi
+    done <'go_packages.cfg'
+}
+
 # ────────────────────────────────────────────────────────────────────────────────
 
 init() {
@@ -524,14 +568,23 @@ full_install() {
     cmdExists "brew" && eok "brew already installed" || installBrew
     ensureBrewFormulaes
 
+    # Golang
+    cmdExists "go" && eok "go already installed" || installGo
+
+    if ! command -v go &>/dev/null; then
+        efail "Go is not installed on this system. Could not install go binaries (tools)"
+    else
+        ensureGoPackages
+    fi
+
     # TEST: dotfiles / synced files
     # TEST: git remote set-url origin git@github.com:Nephylhim/dotfiles.git --push
     # TEST: git config
 
     # TODO: my tools
     # TEST: cargo bins
-    # TODO: GO bins/env
-    # TODO: go bins (panicparse, glow) => go get -u github.com/charmbracelet/glow
+    # TEST: GO bins/env
+    # TEST: go bins (panicparse) => go get -u github.com/charmbracelet/glow
     # TEST: gnome configuration / keybindings (via dconf / gsettings)
     # TODO: regarder gsettings
     # TODO: gnome tweak tools + extensions + conf bureaux (theme/icons)
@@ -550,6 +603,7 @@ full_install() {
     # TEST: brew formulaes
     # TEST: install cheat.sh
     # TODO: ensure package build-essential is installed
+    # TODO: install etcher
 
     # TODO: adapt for arch/manjaro
     # TODO: --no-graphic mode (no gnome / vscode setup) / profils
