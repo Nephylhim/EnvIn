@@ -61,13 +61,25 @@ dirExists() {
     fi
 }
 
-# check() {
-#     if $1; then
-#         eok "$2"
-#     else
-#         efail "$3"
-#     fi
-# }
+listCfgValues() {
+    arrayName=$1
+    filename=$2
+    declare -n values="$arrayName"
+
+    while IFS='' read -r line || [[ -n "$line" ]]; do
+        if grep -qP '^(?:#|\/\/)' <<<"$line"; then
+            continue
+        fi
+
+        # shellcheck disable=SC2001
+        value=$(perl -pe 's/^(.*?) *(?:#.*)?$/\1/gm' <<<"$line")
+        if [[ $value == "" ]]; then
+            continue
+        fi
+
+        values+=("$value")
+    done <"$filename"
+}
 
 verify_admin() {
     # sudo group line in /etc/group
@@ -200,31 +212,27 @@ printNInstall() {
 # ────────────────────────────────────────────────────────────────────────────────
 
 ensurePackages() {
-    while IFS='' read -r line || [[ -n "$line" ]]; do
-        if grep -qP '^(?:#|\/\/)' <<<"$extension"; then
-            continue
-        fi
-
+    lines=()
+    listCfgValues lines 'packages.cfg'
+    for line in "${lines[@]}"; do
         name=$(cut -d: -f1 <<<"$line")
         package=$(cut -d: -f2 <<<"$line")
 
         verifyCmd "$name" "$package"
-    done <'packages.cfg'
+    done
 }
 
 ensureCargoBins() {
-    while IFS='' read -r line || [[ -n "$line" ]]; do
-        if grep -qP '^(?:#|\/\/)' <<<"$extension"; then
-            continue
-        fi
-
+    lines=()
+    listCfgValues lines 'cargo_bins.cfg'
+    for line in "${lines[@]}"; do
         cmd=$(cut -d: -f1 <<<"$line")
         # shellcheck disable=SC2178
         crate=$(cut -d: -f2 <<<"$line")
 
         # shellcheck disable=SC2086,SC2128
         verifyCargoCmd "$cmd" $crate
-    done <'cargo_bins.cfg'
+    done
 }
 
 isInGitRepo() {
@@ -403,18 +411,16 @@ installVSCode() {
 ensureVSCodeExtensions() {
     extensions="$(code --list-extensions)"
 
-    while IFS='' read -r extension || [[ -n "$extension" ]]; do
-        if grep -qP '^(?:#|\/\/)' <<<"$extension"; then
-            continue
-        fi
-
+    cfgExtensions=()
+    listCfgValues extensions 'vscode_extensions.cfg'
+    for extension in "${cfgExtensions[@]}"; do
         if grep -q "^${extension}$" <<<"$extensions"; then
             eok "Extension $extension is already installed"
         else
             einfo "Installing $extension"
             code --install-extension "$extension"
         fi
-    done <'vscode_extensions.cfg'
+    done
 }
 
 installCheatSh() {
@@ -437,11 +443,9 @@ installBrew() {
 ensureBrewFormulaes() {
     formulaes="$(brew list -1)"
 
-    while IFS='' read -r formulae || [[ -n "$formulae" ]]; do
-        if grep -qP '^(?:#|\/\/)' <<<"$formulae"; then
-            continue
-        fi
-
+    cfgFormulaes=()
+    listCfgValues cfgFormulaes 'brew_formulaes.cfg'
+    for formulae in "${cfgFormulaes[@]}"; do
         if grep -q "^${formulae}$" <<<"$formulaes"; then
             eok "Formulae $formulae is already installed"
         else
@@ -449,7 +453,7 @@ ensureBrewFormulaes() {
             brew install "$formulae"
             eok "Formulae $formulae installed successfully"
         fi
-    done <'brew_formulaes.cfg'
+    done
 }
 
 installGo() {
@@ -478,11 +482,9 @@ installGo() {
 
 ensureGoPackages() {
     gp="${GOPATH:-$HOME/go}/src"
-    while IFS='' read -r package || [[ -n "$package" ]]; do
-        if grep -qP '^(?:#|\/\/)' <<<"$package"; then
-            continue
-        fi
-
+    goPackages=()
+    listCfgValues goPackages 'go_packages.cfg'
+    for package in "${goPackages[@]}"; do
         pBase=$(cut -d' ' -f1 <<<"$package" | awk -F '/' '{print $1"/"$2"/"$3}')
 
         if test -d "$gp/$pBase"; then
@@ -493,7 +495,7 @@ ensureGoPackages() {
             go get $package
             eok "Go package $pBase installed successfully"
         fi
-    done <'go_packages.cfg'
+    done
 }
 
 # ────────────────────────────────────────────────────────────────────────────────
