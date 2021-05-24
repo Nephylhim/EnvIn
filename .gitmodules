@@ -1,0 +1,3 @@
+[submodule "gnome-shell-extension-installer"]
+	path = gnome-shell-extension-installer
+	url = https://github.com/brunelli/gnome-shell-extension-installer.git
