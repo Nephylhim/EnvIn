@@ -563,14 +563,17 @@ full_install() {
     cmdExists "cht.sh" && eok "cht.sh already installed" || installCheatSh
 
     # VSCode
+    echo -e "\n### VSCode"
     cmdExists "code" && eok "VSCode already installed" || installVSCode
     ensureVSCodeExtensions
 
     # Brew
+    echo -e "\n### Brew"
     cmdExists "brew" && eok "brew already installed" || installBrew
     ensureBrewFormulaes
 
     # Golang
+    echo -e "\n### Golang"
     cmdExists "go" && eok "go already installed" || installGo
 
     if ! command -v go &>/dev/null; then
