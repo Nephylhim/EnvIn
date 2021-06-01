@@ -20,21 +20,33 @@ NC=$'\e[0m'
 
 shell_dir="$(dirname "${BASH_SOURCE[0]}")"
 
-einfo() {
-    echo -e "[${BLUE}INFO${NC}] $*"
+red() {
+    echo -ne "${RED}$*${NC}"
+}
+green() {
+    echo -ne "${GREEN}$*${NC}"
+}
+blue() {
+    echo -ne "${BLUE}$*${NC}"
+}
+yellow() {
+    echo -ne "${YELLOW}$*${NC}"
 }
 
-efail() {
-    echo -e "[${RED}FAIL${NC}] $*"
-}
+shell_dir="$(dirname "${BASH_SOURCE[0]}")"
 
-eok() {
-    echo -e "[${GREEN} OK ${NC}] $*"
+linfo() {
+    echo -e "[$(blue INFO)] $*"
 }
-
-edebug() {
+lfail() {
+    echo -e "[$(red FAIL)] $*"
+}
+lok() {
+    echo -e "[$(green " OK ")] $*"
+}
+ldebug() {
     if $debug; then
-        echo -e "[${YELLOW}DEBU${NC}]${YELLOW} $*${NC}"
+        echo -e "[$(yellow DEBU)] $(yellow "$*")"
     fi
 }
 
@@ -87,17 +99,17 @@ verify_admin() {
 
     # verify that the user is present in the sudo group line
     if ! grep -Eq "${USER}[,\n]" <<<"$sudoGrp\n"; then
-        einfo "User $USER is not sudoer, adding it to sudoers using 'su' command. You'll have to enter root password"
+        linfo "User $USER is not sudoer, adding it to sudoers using 'su' command. You'll have to enter root password"
         su -c "echo '$USER  ALL=(ALL) ALL' >> /etc/sudoers"
-        sudo -c "usermod -aG sudo '$USER'" # This doesn't work as is, as the user would need to log out before being able to use sudo. This method is more clean and so the user is added to the group. However the user is also temporarily added in the sudoer file in order to continue the script
-        eok "User $USER added to sudoers"
+        sudo usermod -aG sudo "$USER" # This doesn't work as is, as the user would need to log out before being able to use sudo. This method is more clean and so the user is added to the group. However the user is also temporarily added in the sudoer file in order to continue the script
+        lok "User $USER added to sudoers"
     fi
 
-    einfo "Verifying user can sudo. You may have to enter your sudo password"
+    linfo "Verifying user can sudo. You may have to enter your sudo password"
     if sudo true; then
-        eok "User is sudoer"
+        lok "User is sudoer"
     else
-        efail "User is not sudoer. This script must use sudo to work properly"
+        lfail "User is not sudoer. This script must use sudo to work properly"
         exit 1
     fi
 }
@@ -118,13 +130,13 @@ verifyCmd() {
     else
         pkg=$1
     fi
-    edebug "Verifying cmd $cmd is installed"
-    edebug "Package name: $pkg"
+    ldebug "Verifying cmd $cmd is installed"
+    ldebug "Package name: $pkg"
 
     if cmdExists "$cmd"; then
-        eok "$cmd installed"
+        lok "$cmd installed"
     else
-        edebug "Command not installed, installing it"
+        ldebug "Command not installed, installing it"
         installPkg "$pkg"
     fi
 }
@@ -136,27 +148,27 @@ verifyCargoCmd() {
     else
         crate=("$1")
     fi
-    edebug "Verifying cmd $cmd is installed"
-    edebug "Crate name: ${crate[*]}"
+    ldebug "Verifying cmd $cmd is installed"
+    ldebug "Crate name: ${crate[*]}"
 
     if cmdExists "$cmd"; then
-        eok "$cmd installed"
+        lok "$cmd installed"
     else
-        edebug "Command not installed, installing it"
+        ldebug "Command not installed, installing it"
         cargoInstall "${crate[@]}"
     fi
 }
 
 installPkg() {
-    einfo "$* not installed. Installing..."
+    linfo "$* not installed. Installing..."
     sudo apt install -y "$@"
-    eok "Installation successful: $*"
+    lok "Installation successful: $*"
 }
 
 cargoInstall() {
-    einfo "$* not installed. Installing..."
+    linfo "$* not installed. Installing..."
     cargo install "$@"
-    eok "Installation successful: $*"
+    lok "Installation successful: $*"
 }
 
 ensureDconfValue() {
@@ -166,16 +178,16 @@ ensureDconfValue() {
     local val
     val=$(dconf read "$reg")
     if [[ "$val" == "$expected" ]]; then
-        eok "dconf reg correctly setup $reg"
+        lok "dconf reg correctly setup $reg"
     else
-        einfo "dconf reg $reg not correctly setup. changing value"
+        linfo "dconf reg $reg not correctly setup. changing value"
         dconf write "$reg" "$expected"
 
         val=$(dconf read "$reg")
         if [[ "$val" == "$expected" ]]; then
-            eok "dconf reg correctly setup $reg"
+            lok "dconf reg correctly setup $reg"
         else
-            efail "dconf reg not correctly setup. $reg shoud be $expected (got $val)"
+            lfail "dconf reg not correctly setup. $reg shoud be $expected (got $val)"
             return 1
         fi
     fi
@@ -204,9 +216,9 @@ printNInstall() {
     name=$1
     cmd=$2
 
-    einfo "$name not installed. Installing..."
+    linfo "$name not installed. Installing..."
     eval "$cmd"
-    eok "Installation successful: $name"
+    lok "Installation successful: $name"
 }
 
 # ────────────────────────────────────────────────────────────────────────────────
@@ -236,34 +248,34 @@ ensureCargoBins() {
 }
 
 isInGitRepo() {
-    edebug "Shell dir: $shell_dir"
+    ldebug "Shell dir: $shell_dir"
     if [ ! -d .git ]; then
-        edebug "Script not in git dir"
+        ldebug "Script not in git dir"
         return 0
     fi
     remoteURL=$(git config --get remote.origin.url)
     if [[ $remoteURL != "$ENVIN_HTTPS_REPOSITORY" && $remoteURL != "$ENVIN_SSH_REPOSITORY" ]]; then
-        edebug "Script not in git dir"
+        ldebug "Script not in git dir"
         return 0
     fi
 
-    edebug "Script is in git dir"
+    ldebug "Script is in git dir"
     return 1
 }
 
-ensureGitRepository() {
+ensureSelfInGitRepository() {
     if ! isInGitRepo; then
-        eok "Script executed in repository. Continuing"
+        lok "Script executed in repository. Continuing"
         return 0
     fi
 
-    einfo "Not in git repository. Retrieving it to have resources"
-    edebug "to path: $EnvInDirPath"
-    git clone "$ENVIN_HTTPS_REPOSITORY" "$EnvInDirPath"
+    linfo "Not in git repository. Retrieving it to have resources"
+    ldebug "to path: $EnvInDirPath"
+    git clone --recurse-submodule "$ENVIN_HTTPS_REPOSITORY" "$EnvInDirPath"
     cd "$EnvInDirPath"
-    einfo "Setting push url to SSH URL"
+    linfo "Setting push url to SSH URL"
     git remote set-url origin "$ENVIN_SSH_REPOSITORY" --push
-    einfo "Relaunching EnvIn in git directory"
+    linfo "Relaunching EnvIn in git directory"
     bash -c "$EnvInDirPath/envin"
 
     # EnvIn runned in git repository, this instance can now exit without error
@@ -271,45 +283,47 @@ ensureGitRepository() {
 }
 
 installOhMyZSH() {
-    einfo "Oh My Zsh not installed. Installing..."
+    linfo "Oh My Zsh not installed. Installing..."
     export RUNZSH='no'
     sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-    eok "Installation successful: Oh My Zsh"
+    lok "Installation successful: Oh My Zsh"
 }
 
 installCargo() {
-    einfo "cargo not installed. Installing rust env..."
+    linfo "cargo not installed. Installing rust env..."
     curl https://sh.rustup.rs -sSf | sh -s -- -y
-    eok "Installation successful: rust env"
+    lok "Installation successful: rust env"
 }
 
 installStarship() {
-    einfo "starship not installed. Installing starship..."
+    linfo "starship not installed. Installing starship..."
     curl -fsSL https://starship.rs/install.sh | bash -s -- -f
-    eok "Installation successful: starship"
+    lok "Installation successful: starship"
 }
 
 setupDotfiles() {
-    einfo "Retrieving dotfiles repository..."
+    linfo "Retrieving dotfiles repository..."
     dot init "$DOTFILES_REPOSITORY"
     cd "$HOME/.dotfiles"
-    einfo "Setting push url to SSH URL..."
+    linfo "Setting push url to SSH URL..."
     git remote set-url origin "$DOTFILES_SSH_REPOSITORY" --push
-    eok "Dotfiles repository retrieved"
+    linfo "Ensuring submodule presence..."
+    git submodule update --init # ensure that we retrieve submodule as well
+    lok "Dotfiles repository retrieved"
 }
 
 linkDotfiles() {
-    einfo "Linking dotfiles"
+    linfo "Linking dotfiles"
     dot link
-    eok "Dotfiles linked"
+    lok "Dotfiles linked"
 }
 
 installDSMNerdFont() {
-    einfo "Installing DroidSansMono Nerd font..."
+    linfo "Installing DroidSansMono Nerd font..."
     mkdir -p "$HOME/.local/share/fonts"
     cd "$HOME/.local/share/fonts"
     curl -fLo "Droid Sans Mono for Powerline Nerd Font Complete.otf" https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/DroidSansMono/complete/Droid%20Sans%20Mono%20Nerd%20Font%20Complete.otf
-    eok "Installation successful: DroidSansMono Nerd font"
+    lok "Installation successful: DroidSansMono Nerd font"
 }
 
 ensureTilixConfiguration() {
@@ -375,21 +389,21 @@ ensureGnomeConfiguration() {
 }
 
 installDesktopTheme() {
-    einfo "Installing Desktop theme..."
+    linfo "Installing Desktop theme..."
     mkdir -p "$SOFT_INSTALL_DIR"
     cd "$SOFT_INSTALL_DIR"
     git clone https://github.com/vinceliuice/Matcha-gtk-theme.git
     cd Matcha-gtk-theme
     ./install.sh
-    eok "Installation successful: Desktop theme"
+    lok "Installation successful: Desktop theme"
 }
 
 installIconTheme() {
-    einfo "Installing icon theme..."
+    linfo "Installing icon theme..."
     mkdir -p "$HOME/.local/share/icons"
     cd "$HOME/.local/share/icons"
     git clone https://github.com/zayronxio/Zafiro-icons.git
-    eok "Installation successful: icon theme"
+    lok "Installation successful: icon theme"
 }
 
 ensureGnomeStyle() {
@@ -399,44 +413,45 @@ ensureGnomeStyle() {
 }
 
 installVSCode() {
-    einfo "Installing VSCode..."
+    linfo "Installing VSCode..."
     wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor >packages.microsoft.gpg
     sudo install -o root -g root -m 644 packages.microsoft.gpg /etc/apt/trusted.gpg.d/
     sudo sh -c 'echo "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/packages.microsoft.gpg] https://packages.microsoft.com/repos/vscode stable main" > /etc/apt/sources.list.d/vscode.list'
     sudo apt update
     sudo apt install code -y
-    eok "Installation successful: VSCode"
+    lok "Installation successful: VSCode"
 }
 
 ensureVSCodeExtensions() {
     extensions="$(code --list-extensions)"
 
     cfgExtensions=()
-    listCfgValues extensions 'vscode_extensions.cfg'
+    listCfgValues cfgExtensions 'vscode_extensions.cfg'
     for extension in "${cfgExtensions[@]}"; do
         if grep -q "^${extension}$" <<<"$extensions"; then
-            eok "Extension $extension is already installed"
+            lok "Extension $extension is already installed"
         else
-            einfo "Installing $extension"
+            linfo "Installing $extension"
             code --install-extension "$extension"
+            lok "Extension $extension installed"
         fi
     done
 }
 
 installCheatSh() {
-    einfo "Installing cht.sh..."
+    linfo "Installing cht.sh..."
     PATH_DIR="$HOME/bin" # or another directory on your $PATH
     mkdir -p "$PATH_DIR"
     curl https://cht.sh/:cht.sh >"$PATH_DIR/cht.sh"
     chmod +x "$PATH_DIR/cht.sh"
-    eok "Installation successful: cht.sh"
+    lok "Installation successful: cht.sh"
 }
 
 installBrew() {
-    einfo "Installing Brew..."
+    linfo "Installing Brew..."
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-    eok "Installation successful: Brew"
+    lok "Installation successful: Brew"
     # brew analytics off # to disable anonymous analytics
 }
 
@@ -447,37 +462,37 @@ ensureBrewFormulaes() {
     listCfgValues cfgFormulaes 'brew_formulaes.cfg'
     for formulae in "${cfgFormulaes[@]}"; do
         if grep -q "^${formulae}$" <<<"$formulaes"; then
-            eok "Formulae $formulae is already installed"
+            lok "Formulae $formulae is already installed"
         else
-            einfo "Installing $formulae"
+            linfo "Installing $formulae"
             brew install "$formulae"
-            eok "Formulae $formulae installed successfully"
+            lok "Formulae $formulae installed successfully"
         fi
     done
 }
 
 installGo() {
-    einfo "Installing Go..."
+    linfo "Installing Go..."
     dlPath="$(curl -s "https://golang.org/dl/" |
         grep -P '<a class="download downloadBox" href="([^"]+)">' |
         grep "linux-amd64" |
         sed -E 's|<a class="download downloadBox" href="([^"]+)">|\1|')"
 
     url="https://golang.org${dlPath}"
-    einfo "Installing go using: $url"
+    linfo "Installing go using: $url"
 
     tmpDir="$(mktemp -d)"
-    edebug "tmpDir: $tmpDir"
+    ldebug "tmpDir: $tmpDir"
     cd "$tmpDir"
-    einfo "Downloading go archive..."
+    linfo "Downloading go archive..."
     curl -LOJs "$url"
-    einfo "archive downloaded..."
+    linfo "archive downloaded..."
     archiveName="$(ls)"
 
-    sudo rm -rf /usr/local/go && tar -C /usr/local -xzf "$archiveName"
+    sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf "$archiveName"
     cd - &>/dev/null
     rm -rf "$tmpDir"
-    eok "Go installed"
+    lok "Go installed"
 }
 
 ensureGoPackages() {
@@ -488,12 +503,12 @@ ensureGoPackages() {
         pBase=$(cut -d' ' -f1 <<<"$package" | awk -F '/' '{print $1"/"$2"/"$3}')
 
         if test -d "$gp/$pBase"; then
-            eok "Go package $pBase is already installed"
+            lok "Go package $pBase is already installed"
         else
-            einfo "Installing $pBase"
+            linfo "Installing $pBase"
             #shellcheck disable=SC2086
             go get $package
-            eok "Go package $pBase installed successfully"
+            lok "Go package $pBase installed successfully"
         fi
     done
 }
@@ -505,9 +520,9 @@ ensureGnomeShellExtensions() {
         extensionID="$(cut -d':' -f1 <<<"$line")"
         extensionName="$(cut -d':' -f2 <<<"$line")"
 
-        einfo "(Re)installing extension $extensionName ($extensionID)"
+        linfo "(Re)installing extension $extensionName ($extensionID)"
         ./gnome-shell-extension-installer/gnome-shell-extension-installer "$extensionID"
-        eok "Extension $extensionName installed"
+        lok "Extension $extensionName installed"
     done
 }
 
@@ -537,7 +552,7 @@ full_install() {
 
     # Rust CLI utils
     echo -e "\n### Rust CLI utils"
-    cmdExists "cargo" && eok "cargo installed" || installCargo
+    cmdExists "cargo" && lok "cargo installed" || installCargo
     # verifyCargoCmd "exa"
     # verifyCargoCmd "bat" "--locked" "bat"
     # verifyCargoCmd "eva"
@@ -549,16 +564,17 @@ full_install() {
 
     # Shell
     echo -e "\n### Shell"
-    fileExists "$HOME/.local/share/fonts/Droid Sans Mono Nerd Font Complete.otf" || installDSMNerdFont
+    # fileExists "$HOME/.local/share/fonts/Droid Sans Mono Nerd Font Complete.otf" || installDSMNerdFont
+    fileExists "$HOME/.local/share/fonts/Droid Sans Mono for Powerline Nerd Font Complete.otf" && lok "Nerd font already installed" || installDSMNerdFont
     verifyCmd "tilix"
     ensureTilixConfiguration
     verifyCmd "zsh"
-    dirExists "$HOME/.oh-my-zsh" && eok "oh-my-zsh installed" || installOhMyZSH
-    # dirExists "$ZSH/custom/plugins/zsh-autosuggestions" && eok "oh-my-zsh installed" || installOMZAutoSuggest
-    dirExists "$ZSH/custom/plugins/zsh-autosuggestions" && eok "OMZ autosuggestions installed" || printNInstall "OMZ autosuggestions" 'git clone https://github.com/zsh-users/zsh-autosuggestions "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"/plugins/zsh-autosuggestions'
-    cmdExists "starship" && eok "starship installed" || installStarship
-    dirExists "$HOME/.dotfiles" && eok "Dotfiles directory present" || setupDotfiles
-    dot check && eok "dotfiles synced correctly" || linkDotfiles
+    dirExists "$HOME/.oh-my-zsh" && lok "oh-my-zsh installed" || installOhMyZSH
+    # dirExists "$ZSH/custom/plugins/zsh-autosuggestions" && lok "oh-my-zsh installed" || installOMZAutoSuggest
+    dirExists "$ZSH/custom/plugins/zsh-autosuggestions" && lok "OMZ autosuggestions installed" || printNInstall "OMZ autosuggestions" 'git clone https://github.com/zsh-users/zsh-autosuggestions "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"/plugins/zsh-autosuggestions'
+    cmdExists "starship" && lok "starship installed" || installStarship
+    dirExists "$HOME/.dotfiles" && lok "Dotfiles directory present" || setupDotfiles
+    dot check && lok "dotfiles synced correctly" || linkDotfiles
 
     # Desktop Environment
     echo -e "\n### Desktop environment"
@@ -573,48 +589,49 @@ full_install() {
 
     # Config
     echo -e "\n### Configuration"
-    dirExists "$HOME/opt" && eok "local opt directory exists" || mkdir -p "$HOME/opt"
-    dirExists "$HOME/bin" && eok "local bin directory exists" || mkdir -p "$HOME/bin"
+    dirExists "$HOME/opt" && lok "local opt directory exists" || mkdir -p "$HOME/opt"
+    dirExists "$HOME/bin" && lok "local bin directory exists" || mkdir -p "$HOME/bin"
 
     # cheat.sh
-    cmdExists "cht.sh" && eok "cht.sh already installed" || installCheatSh
+    cmdExists "cht.sh" && lok "cht.sh already installed" || installCheatSh
 
     # VSCode
     echo -e "\n### VSCode"
-    cmdExists "code" && eok "VSCode already installed" || installVSCode
+    cmdExists "code" && lok "VSCode already installed" || installVSCode
     ensureVSCodeExtensions
 
     # Brew
     echo -e "\n### Brew"
-    cmdExists "brew" && eok "brew already installed" || installBrew
+    cmdExists "brew" && lok "brew already installed" || installBrew
     ensureBrewFormulaes
 
     # Golang
     echo -e "\n### Golang"
-    cmdExists "go" && eok "go already installed" || installGo
+    cmdExists "go" && lok "go already installed" || installGo
 
     if ! command -v go &>/dev/null; then
-        efail "Go is not installed on this system. Could not install go binaries (tools)"
+        lfail "Go is not installed on this system. Could not install go binaries (tools)"
     else
         ensureGoPackages
     fi
 
     # TEST: dotfiles / synced files
     # TEST: git remote set-url origin git@github.com:Nephylhim/dotfiles.git --push
+    # TEST: dotfiles retrieve submodules
+    # TEST: vim (vimrc+plugins)
     # TEST: git config
 
     # TODO: my tools
-    # TEST: cargo bins
     # TEST: GO bins/env
     # TEST: go bins (panicparse) => go get -u github.com/charmbracelet/glow
     # TEST: gnome configuration / keybindings (via dconf / gsettings)
     # TODO: regarder gsettings
-    # TODO: gnome tweak tools + extensions + conf bureaux (theme/icons)
+    # TEST: gnome tweak tools + extensions + conf bureaux (theme/icons)
+    # TODO: improve gnome extension install (verify if already installed)
     # TEST: clavier us-int + fr (/org/gnome/desktop/input-sources/ ?)
     # verifyCmd "code" # Installed w/ dpkg by retrieving deb file on website
     # TEST: retrieve last version of vscode
     # TEST: vscode conf + extensions
-    # TODO: vim (vimrc+plugins)
     # TEST: fonts (fixed mono font)
     # TEST: redo color palette tilix + bg
     # TEST: git remote set-url origin git@github.com:Nephylhim/envin.git --push
@@ -626,6 +643,7 @@ full_install() {
     # TEST: install cheat.sh
     # TODO: ensure package build-essential is installed
     # TODO: install etcher
+    # TEST: retrieve git submodule
 
     # TODO: adapt for arch/manjaro
     # TODO: --no-graphic mode (no gnome / vscode setup) / profils
@@ -637,7 +655,7 @@ main() {
     init
 
     verifyCmd "git"
-    ensureGitRepository
+    ensureSelfInGitRepository
 
     full_install
     sudoer_file_remove_user
