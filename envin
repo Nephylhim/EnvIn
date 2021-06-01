@@ -437,9 +437,15 @@ installIconTheme() {
 }
 
 ensureGnomeStyle() {
-    ensureDconfValue '/org/gnome/desktop/interface/gtk-theme' "'Matcha-dark-azul'"
     ensureDconfValue '/org/gnome/shell/extensions/user-theme/name' "'Matcha-dark-azul'"
-    ensureDconfValue '/org/gnome/desktop/interface/icon-theme' "'Zafiro-icons'"
+
+    # ensureDconfValue '/org/gnome/desktop/interface/gtk-theme' "'Matcha-dark-azul'"
+    # ensureDconfValue '/org/gnome/desktop/interface/icon-theme' "'Zafiro-icons'"
+    interfacePath='/org/gnome/desktop/interface/'
+    interfaceValues=("show-battery-percentage:true" "gtk-im-module:'gtk-im-context-simple'" "icon-theme:'Zafiro-icons'" "gtk-theme:'Matcha-dark-azul'")
+    ensureDconfDirValues "$interfacePath" "${interfaceValues[@]}"
+
+    ensureDconfValue '/org/gnome/desktop/calendar/show-weekdate' "true"
 }
 
 installVSCode() {
