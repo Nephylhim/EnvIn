@@ -389,7 +389,7 @@ ensureGnomeConfiguration() {
 
     # mouse
     mousePath='/org/gnome/desktop/peripherals/mouse/'
-    mouseValues=("natural-scroll:false")
+    mouseValues=("natural-scroll:false" "accel-profile:'flat'")
     ensureDconfDirValues "$mousePath" "${mouseValues[@]}"
 
     # keybindings
