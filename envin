@@ -552,14 +552,34 @@ ensureGoPackages() {
 ensureGnomeShellExtensions() {
     extensions=()
     listCfgValues extensions 'gnome_extensions.cfg'
+
+    workingDir="$(mktemp -d)"
+    envinDir="$(pwd)"
+
+    linfo "Checking gnome extensions..."
+
     for line in "${extensions[@]}"; do
         extensionID="$(cut -d':' -f1 <<<"$line")"
         extensionName="$(cut -d':' -f2 <<<"$line")"
 
-        linfo "(Re)installing extension $extensionName ($extensionID)"
-        ./gnome-shell-extension-installer/gnome-shell-extension-installer "$extensionID"
-        lok "Extension $extensionName installed"
+        cd "$workingDir"
+        gsei="$envinDir"/gnome-shell-extension-installer/gnome-shell-extension-installer
+        $gsei "$extensionID" --yes --no-install >/dev/null
+
+        extDirName="$(find . -name '*.zip' | sed 's|\.shell-extension\.zip||')"
+        rm -rf "${workingDir:?}"/*
+
+        if test -d "$HOME/.local/share/gnome-shell/extensions/$extDirName"; then
+            lok "Extension $(yellow "$extensionName") ($(yellow "$extensionID")) already installed"
+        else
+            linfo "Extension $(yellow "$extensionName") ($(yellow "$extensionID")) not installed yet. Installing..."
+            ./gnome-shell-extension-installer/gnome-shell-extension-installer "$extensionID" --yes
+            lok "Extension $(yellow "$extensionName") ($(yellow "$extensionID")) installed"
+        fi
     done
+
+    rm -rf "$workingDir"
+    lok "Gnome extensions checked"
 }
 
 # ────────────────────────────────────────────────────────────────────────────────
@@ -667,7 +687,7 @@ full_install() {
     # TEST: gnome configuration / keybindings (via dconf / gsettings)
     # TODO: regarder gsettings
     # TEST: gnome tweak tools + extensions + conf bureaux (theme/icons)
-    # TODO: improve gnome extension install (verify if already installed)
+    # TEST: improve gnome extension install (verify if already installed)
     # TEST: clavier us-int + fr (/org/gnome/desktop/input-sources/ ?)
     # verifyCmd "code" # Installed w/ dpkg by retrieving deb file on website
     # TEST: retrieve last version of vscode
