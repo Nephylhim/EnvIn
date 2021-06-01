@@ -221,6 +221,36 @@ printNInstall() {
     lok "Installation successful: $name"
 }
 
+ensureGitRepositoryPresent() {
+    remote=$1
+    path=$2
+    basePath=$(dirname "$path")
+    name=${3:-$(basename "$path")}
+    pushRemote=${4:-$remote}
+
+    if test -d "$path"; then
+        lok "$(yellow "$name") already exists"
+        return
+    else
+        linfo "$(yellow "$name") does not exist yet. Installing..."
+    fi
+
+    if ! test -d "$basePath"; then
+        linfo "Parent directory $(yellow "$basePath") doesn't exist yet, creating it..."
+        mkdir -p "$basePath"
+    fi
+
+    linfo "Cloning $(yellow "$name")"
+    git clone -i "$remote" "$path"
+    if [[ "$pushRemote" != "$remote" ]]; then
+        linfo "Setting remote push URL to $(yellow "$pushRemote")"
+        cd "$path"
+        git remote set-url origin "$pushRemote" --push
+    fi
+
+    lok "$(yellow "$name") set up"
+}
+
 # ────────────────────────────────────────────────────────────────────────────────
 
 ensurePackages() {
@@ -615,13 +645,17 @@ full_install() {
         ensureGoPackages
     fi
 
+    # Git repos
+    ensureGitRepositoryPresent 'https://github.com/Nephylhim/gotoFonction.git' "$HOME/opt/gotoFonction" "Goto function" 'git@github.com:Nephylhim/gotoFonction.git'
+    ensureGitRepositoryPresent 'https://github.com/Nephylhim/OmniCLI.git' "$HOME/opt/OmniCLI" 'OmniCLI' 'git@github.com:Nephylhim/OmniCLI.git'
+
     # TEST: dotfiles / synced files
     # TEST: git remote set-url origin git@github.com:Nephylhim/dotfiles.git --push
     # TEST: dotfiles retrieve submodules
     # TEST: vim (vimrc+plugins)
     # TEST: git config
 
-    # TODO: my tools
+    # TEST: my tools
     # TEST: GO bins/env
     # TEST: go bins (panicparse) => go get -u github.com/charmbracelet/glow
     # TEST: gnome configuration / keybindings (via dconf / gsettings)
