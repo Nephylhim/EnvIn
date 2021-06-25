@@ -18,7 +18,10 @@ BLUE=$'\e[1;34m'
 YELLOW=$'\e[33m'
 NC=$'\e[0m'
 
-shell_dir="$(dirname "${BASH_SOURCE[0]}")"
+shell_dir="$(dirname "${BASH_SOURCE[0]}")" # relative path
+cd "$shell_dir" &>/dev/null
+shell_dir="$(pwd)"
+cd - &>/dev/null
 
 red() {
     echo -ne "${RED}$*${NC}"
@@ -32,8 +35,6 @@ blue() {
 yellow() {
     echo -ne "${YELLOW}$*${NC}"
 }
-
-shell_dir="$(dirname "${BASH_SOURCE[0]}")"
 
 linfo() {
     echo -e "[$(blue INFO)] $*"
@@ -76,6 +77,7 @@ dirExists() {
 listCfgValues() {
     arrayName=$1
     filename=$2
+    unset values
     declare -n values="$arrayName"
 
     while IFS='' read -r line || [[ -n "$line" ]]; do
@@ -241,13 +243,14 @@ ensureGitRepositoryPresent() {
     fi
 
     linfo "Cloning $(yellow "$name")"
-    git clone -i "$remote" "$path"
+    git clone --recurse-submodules -j8 "$remote" "$path"
     if [[ "$pushRemote" != "$remote" ]]; then
         linfo "Setting remote push URL to $(yellow "$pushRemote")"
         cd "$path"
         git remote set-url origin "$pushRemote" --push
     fi
 
+    cd "$shell_dir" &>/dev/null
     lok "$(yellow "$name") set up"
 }
 
@@ -339,6 +342,7 @@ setupDotfiles() {
     git remote set-url origin "$DOTFILES_SSH_REPOSITORY" --push
     linfo "Ensuring submodule presence..."
     git submodule update --init # ensure that we retrieve submodule as well
+    cd "$shell_dir" &>/dev/null
     lok "Dotfiles repository retrieved"
 }
 
@@ -353,6 +357,7 @@ installDSMNerdFont() {
     mkdir -p "$HOME/.local/share/fonts"
     cd "$HOME/.local/share/fonts"
     curl -fLo "Droid Sans Mono for Powerline Nerd Font Complete.otf" https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/DroidSansMono/complete/Droid%20Sans%20Mono%20Nerd%20Font%20Complete.otf
+    cd "$shell_dir" &>/dev/null
     lok "Installation successful: DroidSansMono Nerd font"
 }
 
@@ -425,6 +430,7 @@ installDesktopTheme() {
     git clone https://github.com/vinceliuice/Matcha-gtk-theme.git
     cd Matcha-gtk-theme
     ./install.sh
+    cd "$shell_dir" &>/dev/null
     lok "Installation successful: Desktop theme"
 }
 
@@ -433,6 +439,7 @@ installIconTheme() {
     mkdir -p "$HOME/.local/share/icons"
     cd "$HOME/.local/share/icons"
     git clone https://github.com/zayronxio/Zafiro-icons.git
+    cd "$shell_dir" &>/dev/null
     lok "Installation successful: icon theme"
 }
 
@@ -526,7 +533,7 @@ installGo() {
     archiveName="$(ls)"
 
     sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf "$archiveName"
-    cd - &>/dev/null
+    cd "$shell_dir" &>/dev/null
     rm -rf "$tmpDir"
     lok "Go installed"
 }
@@ -554,7 +561,6 @@ ensureGnomeShellExtensions() {
     listCfgValues extensions 'gnome_extensions.cfg'
 
     workingDir="$(mktemp -d)"
-    envinDir="$(pwd)"
 
     linfo "Checking gnome extensions..."
 
@@ -563,7 +569,7 @@ ensureGnomeShellExtensions() {
         extensionName="$(cut -d':' -f2 <<<"$line")"
 
         cd "$workingDir"
-        gsei="$envinDir"/gnome-shell-extension-installer/gnome-shell-extension-installer
+        gsei="$shell_dir"/gnome-shell-extension-installer/gnome-shell-extension-installer
         $gsei "$extensionID" --yes --no-install >/dev/null
 
         extDirName="$(find . -name '*.zip' | sed 's|\.shell-extension\.zip||')"
@@ -578,15 +584,34 @@ ensureGnomeShellExtensions() {
         fi
     done
 
+    cd "$shell_dir" &>/dev/null
     rm -rf "$workingDir"
     lok "Gnome extensions checked"
+}
+
+ensureGitDirectories() {
+    gitDirs=()
+    listCfgValues gitDirs 'git_dirs.cfg'
+
+    linfo "Checking git repositories..."
+
+    for line in "${gitDirs[@]}"; do
+        fetchURL="$(cut -d'%' -f1 <<<"$line")"
+        dirPath="$(cut -d'%' -f2 <<<"$line" | sed "s|^\$HOME|$HOME|" | sed "s|^~|$HOME|")"
+        name="$(cut -d'%' -f3 <<<"$line")"
+        pushURL="$(cut -d'%' -f4 <<<"$line")"
+
+        ensureGitRepositoryPresent "$fetchURL" "$dirPath" "$name" "$pushURL"
+    done
+
+    lok "Git repositories checked"
 }
 
 # ────────────────────────────────────────────────────────────────────────────────
 
 init() {
     EnvInDirPath="$ENVIN_DEFAULT_PATH"
-    cd "$shell_dir"
+    cd "$shell_dir" &>/dev/null
 
     # TODO: verify envin is not launched as sudo
     verify_admin
@@ -672,8 +697,9 @@ full_install() {
     fi
 
     # Git repos
-    ensureGitRepositoryPresent 'https://github.com/Nephylhim/gotoFonction.git' "$HOME/opt/gotoFonction" "Goto function" 'git@github.com:Nephylhim/gotoFonction.git'
-    ensureGitRepositoryPresent 'https://github.com/Nephylhim/OmniCLI.git' "$HOME/opt/OmniCLI" 'OmniCLI' 'git@github.com:Nephylhim/OmniCLI.git'
+    # ensureGitRepositoryPresent 'https://github.com/Nephylhim/gotoFonction.git' "$HOME/opt/gotoFonction" "Goto function" 'git@github.com:Nephylhim/gotoFonction.git'
+    # ensureGitRepositoryPresent 'https://github.com/Nephylhim/OmniCLI.git' "$HOME/opt/OmniCLI" 'OmniCLI' 'git@github.com:Nephylhim/OmniCLI.git'
+    ensureGitDirectories
 
     # TEST: dotfiles / synced files
     # TEST: git remote set-url origin git@github.com:Nephylhim/dotfiles.git --push
@@ -701,7 +727,7 @@ full_install() {
     # TEST: brew (full auto)
     # TEST: brew formulaes
     # TEST: install cheat.sh
-    # TODO: ensure package build-essential is installed
+    # TODO: ensure package build-essential is installed => refacto packages
     # TODO: install etcher
     # TEST: retrieve git submodule
 
