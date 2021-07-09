@@ -597,7 +597,9 @@ ensureGitDirectories() {
 
     for line in "${gitDirs[@]}"; do
         fetchURL="$(cut -d'%' -f1 <<<"$line")"
-        dirPath="$(cut -d'%' -f2 <<<"$line" | sed "s|^\$HOME|$HOME|" | sed "s|^~|$HOME|")"
+        # dirPath="$(cut -d'%' -f2 <<<"$line" | sed "s|^\$HOME|$HOME|" | sed "s|^~|$HOME|")"
+        dirPath="$(cut -d'%' -f2 <<<"$line")" # can still have variables: ~/$HOME/$ZSH_CUSTOM/...
+        dirPath="$(eval "echo $dirPath")"
         name="$(cut -d'%' -f3 <<<"$line")"
         pushURL="$(cut -d'%' -f4 <<<"$line")"
 
