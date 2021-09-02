@@ -136,7 +136,7 @@ verifyCmd() {
     ldebug "Package name: $pkg"
 
     if cmdExists "$cmd"; then
-        lok "$cmd installed"
+        lok "${YELLOW}$cmd${NC} installed"
     else
         ldebug "Command not installed, installing it"
         installPkg "$pkg"
@@ -154,7 +154,7 @@ verifyCargoCmd() {
     ldebug "Crate name: ${crate[*]}"
 
     if cmdExists "$cmd"; then
-        lok "$cmd installed"
+        lok "${YELLOW}$cmd${NC} installed"
     else
         ldebug "Command not installed, installing it"
         cargoInstall "${crate[@]}"
@@ -162,15 +162,15 @@ verifyCargoCmd() {
 }
 
 installPkg() {
-    linfo "$* not installed. Installing..."
+    linfo "${YELLOW}$*${NC} not installed. Installing..."
     sudo apt install -y "$@"
-    lok "Installation successful: $*"
+    lok "Installation successful: ${YELLOW}$*${NC}"
 }
 
 cargoInstall() {
-    linfo "$* not installed. Installing..."
+    linfo "${YELLOW}$*${NC} not installed. Installing..."
     cargo install "$@"
-    lok "Installation successful: $*"
+    lok "Installation successful: ${YELLOW}$*${NC}"
 }
 
 ensureDconfValue() {
@@ -472,11 +472,11 @@ ensureVSCodeExtensions() {
     listCfgValues cfgExtensions 'vscode_extensions.cfg'
     for extension in "${cfgExtensions[@]}"; do
         if grep -q "^${extension}$" <<<"$extensions"; then
-            lok "Extension $extension is already installed"
+            lok "Extension ${YELLOW}$extension${NC} is already installed"
         else
-            linfo "Installing $extension"
+            linfo "Installing ${YELLOW}$extension${NC}"
             code --install-extension "$extension"
-            lok "Extension $extension installed"
+            lok "Extension ${YELLOW}$extension${NC} installed"
         fi
     done
 }
@@ -503,13 +503,16 @@ ensureBrewFormulaes() {
 
     cfgFormulaes=()
     listCfgValues cfgFormulaes 'brew_formulaes.cfg'
-    for formulae in "${cfgFormulaes[@]}"; do
+    for line in "${cfgFormulaes[@]}"; do
+        formulae="$(cut -d: -f1 <<<"$line")"
+        options="$(cut -d: -f2 <<<"$line")"
+
         if grep -q "^${formulae}$" <<<"$formulaes"; then
-            lok "Formulae $formulae is already installed"
+            lok "Formulae ${YELLOW}$formulae${NC} is already installed"
         else
-            linfo "Installing $formulae"
-            brew install "$formulae"
-            lok "Formulae $formulae installed successfully"
+            linfo "Installing ${YELLOW}$formulae${NC}..."
+            brew install "$options" "$formulae"
+            lok "Formulae ${YELLOW}$formulae${NC} installed successfully"
         fi
     done
 }
@@ -617,7 +620,7 @@ init() {
 
     # TODO: verify envin is not launched as sudo
     verify_admin
-    update_system
+    # update_system
 }
 
 full_install() {
