@@ -612,6 +612,29 @@ ensureGitDirectories() {
     lok "Git repositories checked"
 }
 
+ensurePipPackages() {
+    installedPackages="$(pip3 list)"
+    pipPackages=()
+    listCfgValues pipPackages 'pip_packages.cfg'
+
+    linfo "Checking pip packages..."
+
+    for line in "${pipPackages[@]}"; do
+        ppackage="$(cut -d: -f1 <<<"$line")"
+        # options="$(cut -d: -f2 <<<"$line")"
+
+        if grep -Pq "^${ppackage}\s+" <<<"$installedPackages"; then
+            lok "Pip package ${YELLOW}$ppackage${NC} is already installed"
+        else
+            linfo "Installing ${YELLOW}$ppackage${NC}..."
+            pip3 install "$ppackage"
+            lok "Pip package ${YELLOW}$ppackage${NC} installed successfully"
+        fi
+    done
+
+    lok "Pip packages checked"
+}
+
 # ────────────────────────────────────────────────────────────────────────────────
 
 init() {
@@ -701,9 +724,14 @@ full_install() {
         ensureGoPackages
     fi
 
+    # Python
+    echo -e "\n### Python3 - pip3"
+    ensurePipPackages
+
     # Git repos
     # ensureGitRepositoryPresent 'https://github.com/Nephylhim/gotoFonction.git' "$HOME/opt/gotoFonction" "Goto function" 'git@github.com:Nephylhim/gotoFonction.git'
     # ensureGitRepositoryPresent 'https://github.com/Nephylhim/OmniCLI.git' "$HOME/opt/OmniCLI" 'OmniCLI' 'git@github.com:Nephylhim/OmniCLI.git'
+    echo -e "\n### Git repositories"
     ensureGitDirectories
 
     # TEST: dotfiles / synced files
