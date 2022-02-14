@@ -471,7 +471,7 @@ ensureVSCodeExtensions() {
     cfgExtensions=()
     listCfgValues cfgExtensions 'vscode_extensions.cfg'
     for extension in "${cfgExtensions[@]}"; do
-        if grep -q "^${extension}$" <<<"$extensions"; then
+        if grep -iq "^${extension}$" <<<"$extensions"; then
             lok "Extension ${YELLOW}$extension${NC} is already installed"
         else
             linfo "Installing ${YELLOW}$extension${NC}"
