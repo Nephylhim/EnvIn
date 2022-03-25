@@ -7,6 +7,7 @@ ENVIN_DEFAULT_PATH="$HOME/.envin"
 DOTFILES_REPOSITORY="Nephylhim/dotfiles"
 DOTFILES_SSH_REPOSITORY="git@github.com:Nephylhim/dotfiles.git"
 SOFT_INSTALL_DIR="$HOME/opt"
+ZSH=${ZSH:-/home/thomas/.oh-my-zsh}
 
 set -eo pipefail
 
@@ -273,7 +274,7 @@ ensureCargoBins() {
     for line in "${lines[@]}"; do
         cmd=$(cut -d: -f1 <<<"$line")
         # shellcheck disable=SC2178
-        crate=$(cut -d: -f2 <<<"$line")
+        crate=$(cut -d: -f2- <<<"$line")
 
         # shellcheck disable=SC2086,SC2128
         verifyCargoCmd "$cmd" $crate
@@ -330,7 +331,7 @@ installCargo() {
 
 installStarship() {
     linfo "starship not installed. Installing starship..."
-    curl -fsSL https://starship.rs/install.sh | bash -s -- -f
+    curl -fsSL https://starship.rs/install.sh | sh -s -- -f
     lok "Installation successful: starship"
 }
 
@@ -553,7 +554,7 @@ ensureGoPackages() {
         else
             linfo "Installing $pBase"
             #shellcheck disable=SC2086
-            go get $package
+            go install $package@latest
             lok "Go package $pBase installed successfully"
         fi
     done
