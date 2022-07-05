@@ -15,6 +15,7 @@
 * rust bins/tools > gh have a tool for that
 * dotfiles. sync?
 * update system?
+* `brew upgrade` (with check `brew outdated`?)
 
 ## Sync
 
