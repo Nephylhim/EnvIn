@@ -583,7 +583,7 @@ ensureGnomeShellExtensions() {
             lok "Extension $(yellow "$extensionName") ($(yellow "$extensionID")) already installed"
         else
             linfo "Extension $(yellow "$extensionName") ($(yellow "$extensionID")) not installed yet. Installing..."
-            ./gnome-shell-extension-installer/gnome-shell-extension-installer "$extensionID" --yes
+            "$shell_dir"/gnome-shell-extension-installer/gnome-shell-extension-installer "$extensionID" --yes
             lok "Extension $(yellow "$extensionName") ($(yellow "$extensionID")) installed"
         fi
     done
