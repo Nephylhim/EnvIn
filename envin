@@ -499,6 +499,16 @@ installBrew() {
     # brew analytics off # to disable anonymous analytics
 }
 
+installEtcher() {
+    linfo "Installing Etcher..."
+    curl -1sLf \
+        'https://dl.cloudsmith.io/public/balena/etcher/setup.deb.sh' |
+        sudo -E bash
+    sudo apt update
+    sudo apt install -y balena-etcher-electron
+    lok "Installation successful: Etcher"
+}
+
 ensureBrewFormulaes() {
     formulaes="$(brew list -1)"
 
@@ -728,6 +738,8 @@ full_install() {
     # Python
     echo -e "\n### Python3 - pip3"
     ensurePipPackages
+
+    apt show balena-etcher-electron >/dev/null 2>/dev/null && lok "etcher already installed" || installEtcher
 
     # Git repos
     # ensureGitRepositoryPresent 'https://github.com/Nephylhim/gotoFonction.git' "$HOME/opt/gotoFonction" "Goto function" 'git@github.com:Nephylhim/gotoFonction.git'
