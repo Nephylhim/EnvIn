@@ -63,7 +63,7 @@ fileExists() {
     if [[ -f $1 ]]; then
         return 0
     else
-        return $?
+        return 1
     fi
 }
 
@@ -71,7 +71,7 @@ dirExists() {
     if [[ -d $1 ]]; then
         return 0
     else
-        return $?
+        return 1
     fi
 }
 
@@ -144,18 +144,45 @@ verifyCmd() {
     fi
 }
 
-verifyCargoCmd() {
-    cmd=$1
+listCargoBins() {
+    if [[ $cargoBinsList == "" ]]; then
+        cargoBinsList=$(cargo install --list | grep '^[^ ]' | cut -f1 -d' ')
+    fi
+
+    echo "$cargoBinsList"
+}
+
+# verifyCargoCmd() {
+#     cmd=$1
+#     if [[ $2 != "" ]]; then
+#         crate=("${@:2}")
+#     else
+#         crate=("$1")
+#     fi
+#     ldebug "Verifying cmd $cmd is installed"
+#     ldebug "Crate name: ${crate[*]}"
+
+#     if cmdExists "$cmd"; then
+#         lok "${YELLOW}$cmd${NC} installed"
+#     else
+#         ldebug "Command not installed, installing it"
+#         cargoInstall "${crate[@]}"
+#     fi
+# }
+
+verifyCargoBin() {
+    crateName=$1
     if [[ $2 != "" ]]; then
         crate=("${@:2}")
     else
         crate=("$1")
     fi
-    ldebug "Verifying cmd $cmd is installed"
-    ldebug "Crate name: ${crate[*]}"
+    ldebug "Verifying crate $crateName is installed"
+    ldebug "full crate: ${crate[*]}"
+    cargoBins=$(listCargoBins)
 
-    if cmdExists "$cmd"; then
-        lok "${YELLOW}$cmd${NC} installed"
+    if grep -Pq "^${crateName}\$" <<<"$cargoBins"; then
+        lok "${YELLOW}$crateName${NC} installed"
     else
         ldebug "Command not installed, installing it"
         cargoInstall "${crate[@]}"
@@ -272,12 +299,12 @@ ensureCargoBins() {
     lines=()
     listCfgValues lines 'cargo_bins.cfg'
     for line in "${lines[@]}"; do
-        cmd=$(cut -d: -f1 <<<"$line")
+        crateName=$(cut -d: -f1 <<<"$line")
         # shellcheck disable=SC2178
-        crate=$(cut -d: -f2- <<<"$line")
+        fullCrate=$(cut -d: -f2- <<<"$line")
 
         # shellcheck disable=SC2086,SC2128
-        verifyCargoCmd "$cmd" $crate
+        verifyCargoBin "$crateName" $fullCrate
     done
 }
 
@@ -746,6 +773,9 @@ full_install() {
     # ensureGitRepositoryPresent 'https://github.com/Nephylhim/OmniCLI.git' "$HOME/opt/OmniCLI" 'OmniCLI' 'git@github.com:Nephylhim/OmniCLI.git'
     echo -e "\n### Git repositories"
     ensureGitDirectories
+
+    echo
+    lok "Envin finished successfully"
 
     # TEST: dotfiles / synced files
     # TEST: git remote set-url origin git@github.com:Nephylhim/dotfiles.git --push
