@@ -24,28 +24,14 @@ cd "$shell_dir" &>/dev/null
 shell_dir="$(pwd)"
 cd - &>/dev/null
 
-red() {
-    echo -ne "${RED}$*${NC}"
-}
-green() {
-    echo -ne "${GREEN}$*${NC}"
-}
-blue() {
-    echo -ne "${BLUE}$*${NC}"
-}
-yellow() {
-    echo -ne "${YELLOW}$*${NC}"
-}
+red() { echo -ne "${RED}$*${NC}"; }
+green() { echo -ne "${GREEN}$*${NC}"; }
+blue() { echo -ne "${BLUE}$*${NC}"; }
+yellow() { echo -ne "${YELLOW}$*${NC}"; }
 
-linfo() {
-    echo -e "[$(blue INFO)] $*"
-}
-lfail() {
-    echo -e "[$(red FAIL)] $*"
-}
-lok() {
-    echo -e "[$(green " OK ")] $*"
-}
+linfo() { echo -e "[$(blue INFO)] $*"; }
+lfail() { echo -e "[$(red FAIL)] $*"; }
+lok() { echo -e "[$(green " OK ")] $*"; }
 ldebug() {
     if $debug; then
         echo -e "[$(yellow DEBU)] $(yellow "$*")"
@@ -56,6 +42,13 @@ ldebug() {
 
 cmdExists() {
     command -v "$1" >/dev/null 2>&1
+    return $?
+}
+
+verifyDebPkgInstalled() {
+    pkg=$1
+
+    dpkg -l "$pkg" &>/dev/null
     return $?
 }
 
@@ -126,20 +119,22 @@ update_system() {
     sudo apt upgrade
 }
 
-verifyCmd() {
-    cmd=$1
-    if [[ $2 != "" ]]; then
-        pkg=$2
-    else
-        pkg=$1
-    fi
-    ldebug "Verifying cmd $cmd is installed"
-    ldebug "Package name: $pkg"
+ensureDebPkg() {
+    # cmd=$1
+    # if [[ $2 != "" ]]; then
+    #     pkg=$2
+    # else
+    #     pkg=$1
+    # fi
+    pkg=$1
 
-    if cmdExists "$cmd"; then
-        lok "${YELLOW}$cmd${NC} installed"
+    ldebug "Verifying pkg $pkg is installed"
+    # ldebug "Package name: $pkg"
+
+    if verifyDebPkgInstalled "$pkg"; then
+        lok "$(yellow "$pkg") installed"
     else
-        ldebug "Command not installed, installing it"
+        ldebug "Package not installed, installing it"
         installPkg "$pkg"
     fi
 }
@@ -291,7 +286,7 @@ ensurePackages() {
         name=$(cut -d: -f1 <<<"$line")
         package=$(cut -d: -f2 <<<"$line")
 
-        verifyCmd "$name" "$package"
+        ensureDebPkg "$name" "$package"
     done
 }
 
@@ -686,36 +681,21 @@ init() {
 
 full_install() {
     # CLI utils
-    echo -e "\n### CLI utils"
-    # verifyCmd "curl"
-    # verifyCmd "wget"
-    # verifyCmd "vim"
-    # verifyCmd "jq"
-    # verifyCmd "tree"
-    # verifyCmd "ping" "iputils-ping"
-    # verifyCmd "rg" "ripgrep"
-    # verifyCmd "/usr/bin/fdfind" "fd-find"
+    echo -e "\n─── $(date --rfc-3339=second) - CLI utils ─────────────────────────────────────────"
     ensurePackages
 
     # Rust CLI utils
     echo -e "\n### Rust CLI utils"
     cmdExists "cargo" && lok "cargo installed" || installCargo
-    # verifyCargoCmd "exa"
-    # verifyCargoCmd "bat" "--locked" "bat"
-    # verifyCargoCmd "eva"
-    # verifyCargoCmd "delta" "git-delta"
-    # verifyCargoCmd "watchexec"
-    # verifyCargoCmd "dot" "--git" "https://github.com/ubnt-intrepid/dot.git"
-    # verifyCargoCmd "rip" "rm-improved"
     ensureCargoBins
 
     # Shell
     echo -e "\n### Shell"
     # fileExists "$HOME/.local/share/fonts/Droid Sans Mono Nerd Font Complete.otf" || installDSMNerdFont
     fileExists "$HOME/.local/share/fonts/Droid Sans Mono for Powerline Nerd Font Complete.otf" && lok "Nerd font already installed" || installDSMNerdFont
-    verifyCmd "tilix"
+    ensureDebPkg "tilix"
     ensureTilixConfiguration
-    verifyCmd "zsh"
+    ensureDebPkg "zsh"
     dirExists "$HOME/.oh-my-zsh" && lok "oh-my-zsh installed" || installOhMyZSH
     # dirExists "$ZSH/custom/plugins/zsh-autosuggestions" && lok "oh-my-zsh installed" || installOMZAutoSuggest
     dirExists "$ZSH/custom/plugins/zsh-autosuggestions" && lok "OMZ autosuggestions installed" || printNInstall "OMZ autosuggestions" 'git clone https://github.com/zsh-users/zsh-autosuggestions "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"/plugins/zsh-autosuggestions'
@@ -769,42 +749,20 @@ full_install() {
     apt show balena-etcher-electron >/dev/null 2>/dev/null && lok "etcher already installed" || installEtcher
 
     # Git repos
-    # ensureGitRepositoryPresent 'https://github.com/Nephylhim/gotoFonction.git' "$HOME/opt/gotoFonction" "Goto function" 'git@github.com:Nephylhim/gotoFonction.git'
-    # ensureGitRepositoryPresent 'https://github.com/Nephylhim/OmniCLI.git' "$HOME/opt/OmniCLI" 'OmniCLI' 'git@github.com:Nephylhim/OmniCLI.git'
     echo -e "\n### Git repositories"
     ensureGitDirectories
 
     echo
     lok "Envin finished successfully"
 
-    # TEST: dotfiles / synced files
     # TEST: git remote set-url origin git@github.com:Nephylhim/dotfiles.git --push
     # TEST: dotfiles retrieve submodules
-    # TEST: vim (vimrc+plugins)
-    # TEST: git config
 
-    # TEST: my tools
-    # TEST: GO bins/env
     # TEST: go bins (panicparse) => go get -u github.com/charmbracelet/glow
-    # TEST: gnome configuration / keybindings (via dconf / gsettings)
-    # TODO: regarder gsettings
-    # TEST: gnome tweak tools + extensions + conf bureaux (theme/icons)
-    # TEST: improve gnome extension install (verify if already installed)
-    # TEST: clavier us-int + fr (/org/gnome/desktop/input-sources/ ?)
-    # verifyCmd "code" # Installed w/ dpkg by retrieving deb file on website
-    # TEST: retrieve last version of vscode
-    # TEST: vscode conf + extensions
-    # TEST: fonts (fixed mono font)
-    # TEST: redo color palette tilix + bg
-    # TEST: git remote set-url origin git@github.com:Nephylhim/envin.git --push
     # TEST: install OMZ full auto (auto change shell [maybe another step in the script]. But don't enter zsh, we want to finish setup) => ask if we want to change default shell
     # TEST: install starship full auto (in /usr/local/bin or user land?)
-    # TEST: user is removed from sudoer file if temporarily added
     # TEST: brew (full auto)
-    # TEST: brew formulaes
-    # TEST: install cheat.sh
     # TODO: ensure package build-essential is installed => refacto packages
-    # TODO: install etcher
     # TEST: retrieve git submodule
 
     # TODO: adapt for arch/manjaro
@@ -816,7 +774,7 @@ main() {
     debug=false
     init
 
-    verifyCmd "git"
+    ensureDebPkg "git"
     ensureSelfInGitRepository
 
     full_install
