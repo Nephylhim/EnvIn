@@ -18,6 +18,8 @@ GREEN=$'\e[1;32m'
 BLUE=$'\e[1;34m'
 YELLOW=$'\e[33m'
 NC=$'\e[0m'
+BOLD="$(tput bold)"
+NORM="$(tput sgr0)"
 
 shell_dir="$(dirname "${BASH_SOURCE[0]}")" # relative path
 cd "$shell_dir" &>/dev/null
@@ -681,16 +683,16 @@ init() {
 
 full_install() {
     # CLI utils
-    echo -e "\n─── $(date --rfc-3339=second) - CLI utils ─────────────────────────────────────────"
+    echo -e "\n─── ${BOLD}$(date --rfc-3339=second) - System ${NORM}────────────────────────────────────────────"
     ensurePackages
 
     # Rust CLI utils
-    echo -e "\n### Rust CLI utils"
+    echo -e "\n─── ${BOLD}$(date --rfc-3339=second) - Rust env & bins ${NORM}───────────────────────────────────"
     cmdExists "cargo" && lok "cargo installed" || installCargo
     ensureCargoBins
 
     # Shell
-    echo -e "\n### Shell"
+    echo -e "\n─── ${BOLD}$(date --rfc-3339=second) - Shell ${NORM}─────────────────────────────────────────────"
     # fileExists "$HOME/.local/share/fonts/Droid Sans Mono Nerd Font Complete.otf" || installDSMNerdFont
     fileExists "$HOME/.local/share/fonts/Droid Sans Mono for Powerline Nerd Font Complete.otf" && lok "Nerd font already installed" || installDSMNerdFont
     ensureDebPkg "tilix"
@@ -704,18 +706,18 @@ full_install() {
     dot check && lok "dotfiles synced correctly" || linkDotfiles
 
     # Desktop Environment
-    echo -e "\n### Desktop environment"
+    echo -e "\n─── ${BOLD}$(date --rfc-3339=second) - Desktop environment ${NORM}───────────────────────────────"
     dirExists "$HOME/.themes/Matcha-dark-azul" || installDesktopTheme
     dirExists "$HOME/.local/share/icons/Zafiro-icons" || installIconTheme
     ensureGnomeStyle
     ensureGnomeConfiguration
 
     # Gnome Shell extensions
-    echo -e "\n### Gnome Shell extensions"
+    echo -e "\n─── ${BOLD}$(date --rfc-3339=second) - Gnome Shell extensions ${NORM}────────────────────────────"
     test -d ./gnome-shell-extension-installer && ensureGnomeShellExtensions
 
     # Config
-    echo -e "\n### Configuration"
+    echo -e "\n─── ${BOLD}$(date --rfc-3339=second) - Configuration ${NORM}─────────────────────────────────────"
     dirExists "$HOME/opt" && lok "local opt directory exists" || mkdir -p "$HOME/opt"
     dirExists "$HOME/bin" && lok "local bin directory exists" || mkdir -p "$HOME/bin"
 
@@ -723,17 +725,17 @@ full_install() {
     cmdExists "cht.sh" && lok "cht.sh already installed" || installCheatSh
 
     # VSCode
-    echo -e "\n### VSCode"
+    echo -e "\n─── ${BOLD}$(date --rfc-3339=second) - VSCode ${NORM}────────────────────────────────────────────"
     cmdExists "code" && lok "VSCode already installed" || installVSCode
     ensureVSCodeExtensions
 
     # Brew
-    echo -e "\n### Brew"
+    echo -e "\n─── ${BOLD}$(date --rfc-3339=second) - Brew ${NORM}──────────────────────────────────────────────"
     cmdExists "brew" && lok "brew already installed" || installBrew
     ensureBrewFormulaes
 
     # Golang
-    echo -e "\n### Golang"
+    echo -e "\n─── ${BOLD}$(date --rfc-3339=second) - Golang ${NORM}────────────────────────────────────────────"
     cmdExists "go" && lok "go already installed" || installGo
 
     if ! command -v go &>/dev/null; then
@@ -743,13 +745,13 @@ full_install() {
     fi
 
     # Python
-    echo -e "\n### Python3 - pip3"
+    echo -e "\n─── ${BOLD}$(date --rfc-3339=second) - Python3 - pip3 ${NORM}────────────────────────────────────"
     ensurePipPackages
 
     apt show balena-etcher-electron >/dev/null 2>/dev/null && lok "etcher already installed" || installEtcher
 
     # Git repos
-    echo -e "\n### Git repositories"
+    echo -e "\n─── ${BOLD}$(date --rfc-3339=second) - Git repositories ${NORM}──────────────────────────────────"
     ensureGitDirectories
 
     echo
