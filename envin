@@ -279,6 +279,27 @@ ensureGitRepositoryPresent() {
     lok "$(yellow "$name") set up"
 }
 
+extract() {
+    if [ -f "$1" ]; then
+        case $1 in
+            *.tar.bz2) tar xvjf "$1" ;;
+            *.tar.gz) tar xvzf "$1" ;;
+            *.bz2) bunzip2 "$1" ;;
+            *.rar) unrar x "$1" ;;
+            *.gz) gunzip "$1" ;;
+            *.tar) tar xvf "$1" ;;
+            *.tbz2) tar xvjf "$1" ;;
+            *.tgz) tar xvzf "$1" ;;
+            *.zip) unzip "$1" ;;
+            *.Z) uncompress "$1" ;;
+            *.7z) 7z x "$1" ;;
+            *) echo "don't know how to extract '$1'..." ;;
+        esac
+    else
+        echo "'$1' is not a valid file!"
+    fi
+}
+
 # ────────────────────────────────────────────────────────────────────────────────
 
 ensurePackages() {
@@ -381,7 +402,7 @@ installDSMNerdFont() {
     linfo "Installing DroidSansMono Nerd font..."
     mkdir -p "$HOME/.local/share/fonts"
     cd "$HOME/.local/share/fonts"
-    curl -fLo "Droid Sans Mono for Powerline Nerd Font Complete.otf" https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/DroidSansMono/complete/Droid%20Sans%20Mono%20Nerd%20Font%20Complete.otf
+    curl -Lo "Droid Sans Mono for Powerline Nerd Font Complete.otf" https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/DroidSansMono/complete/Droid%20Sans%20Mono%20Nerd%20Font%20Complete.otf
     cd "$shell_dir" &>/dev/null
     lok "Installation successful: DroidSansMono Nerd font"
 }
@@ -670,6 +691,82 @@ ensurePipPackages() {
     lok "Pip packages checked"
 }
 
+# installFont works only with url which download an archive atm
+installFont() {
+    font=$1
+    url=$2
+
+    tempDir="$(mktemp -d)"
+    cd "$tempDir"
+    ldebug "retrieving font from url: $url"
+    curl -LOJs "$url"
+
+    ldebug "extracting archive"
+    extract "$(find ./* | head -n1)" # there should be only one downloaded file, but just in case
+    ldebug "moving fonts to the font dir"
+    find . -name '*.ttf' -exec mv "{}" "$FONT_DIR" \;
+    find . -name '*.otf' -exec mv "{}" "$FONT_DIR" \;
+
+    cd - >/dev/null
+    rm -rf "$tempDir"
+}
+
+ensureFontsInstalled() {
+    FONT_DIR="$HOME/.local/share/fonts"
+    fonts=()
+    listCfgValues fonts 'fonts.cfg'
+
+    linfo "Checking fonts..."
+
+    ldebug "ensuring font directory is present"
+    mkdir -p "$FONT_DIR"
+
+    for line in "${fonts[@]}"; do
+        font="$(cut -d% -f1 <<<"$line")"
+        url="$(cut -d% -f2 <<<"$line")"
+
+        if ls "$FONT_DIR/"*"${font}"* >/dev/null 2>&1; then
+            lok "Font ${YELLOW}$font${NC} is already installed"
+        else
+            linfo "Installing ${YELLOW}$font${NC}..."
+            installFont "$font" "$url"
+            lok "Font ${YELLOW}$font${NC} installed successfully"
+        fi
+    done
+
+    lok "Fonts checked"
+}
+
+ensureKittyInstalled() {
+    if test -f ~/.local/kitty.app/bin/kitty; then
+        lok "$(yellow kitty) already installed"
+    else
+        linfo "Installing $(yellow kitty)..."
+        curl -L https://sw.kovidgoyal.net/kitty/installer.sh | sh /dev/stdin
+        lok "$(yellow kitty) installed"
+    fi
+
+    if ! test -f ~/.local/bin/kitty || ! test -f ~/.local/bin/kitten; then
+        linfo "Adding $(yellow kitty) to PATH..."
+        # Create symbolic links to add kitty and kitten to PATH
+        ln -sf ~/.local/kitty.app/bin/kitty ~/.local/kitty.app/bin/kitten ~/.local/bin/
+        lok "$(yellow kitty) added to PATH"
+    fi
+
+    if ! test -f ~/.local/share/applications/kitty.desktop; then
+        linfo "Adding $(yellow kitty) as desktop application..."
+        # Place the kitty.desktop file somewhere it can be found by the OS
+        cp ~/.local/kitty.app/share/applications/kitty.desktop ~/.local/share/applications/
+        # # If you want to open text files and images in kitty via your file manager also add the kitty-open.desktop file
+        # cp ~/.local/kitty.app/share/applications/kitty-open.desktop ~/.local/share/applications/
+
+        # Update the paths to the kitty and its icon in the kitty.desktop file(s)
+        sed -i "s|Icon=kitty|Icon=/home/$USER/.local/kitty.app/share/icons/hicolor/256x256/apps/kitty.png|g" ~/.local/share/applications/kitty*.desktop
+        sed -i "s|Exec=kitty|Exec=/home/$USER/.local/kitty.app/bin/kitty|g" ~/.local/share/applications/kitty*.desktop
+        lok "$(yellow kitty) added as desktop application"
+    fi
+}
+
 # ────────────────────────────────────────────────────────────────────────────────
 
 init() {
@@ -697,6 +794,7 @@ full_install() {
     fileExists "$HOME/.local/share/fonts/Droid Sans Mono for Powerline Nerd Font Complete.otf" && lok "Nerd font already installed" || installDSMNerdFont
     ensureDebPkg "tilix"
     ensureTilixConfiguration
+    ensureKittyInstalled
     ensureDebPkg "zsh"
     dirExists "$HOME/.oh-my-zsh" && lok "oh-my-zsh installed" || installOhMyZSH
     # dirExists "$ZSH/custom/plugins/zsh-autosuggestions" && lok "oh-my-zsh installed" || installOMZAutoSuggest
@@ -709,6 +807,7 @@ full_install() {
     echo -e "\n─── ${BOLD}$(date --rfc-3339=second) - Desktop environment ${NORM}───────────────────────────────"
     dirExists "$HOME/.themes/Matcha-dark-azul" || installDesktopTheme
     dirExists "$HOME/.local/share/icons/Zafiro-icons" || installIconTheme
+    ensureFontsInstalled
     ensureGnomeStyle
     ensureGnomeConfiguration
 
@@ -764,7 +863,7 @@ full_install() {
     # TEST: install OMZ full auto (auto change shell [maybe another step in the script]. But don't enter zsh, we want to finish setup) => ask if we want to change default shell
     # TEST: install starship full auto (in /usr/local/bin or user land?)
     # TEST: brew (full auto)
-    # TODO: ensure package build-essential is installed => refacto packages
+    # TEST: ensure package build-essential is installed => refacto packages
     # TEST: retrieve git submodule
 
     # TODO: adapt for arch/manjaro
