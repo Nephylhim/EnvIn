@@ -458,14 +458,11 @@ ensureGnomeConfiguration() {
     mediakeysValues=("custom-keybindings:['/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/', '/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1/']")
     ensureDconfDirValues "$mediakeysPath" "${mediakeysValues[@]}"
     custom0Path='/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/'
-    custom0Values=("binding:'<Super>t'" "command:'tilix'" "name:'tilix'")
+    custom0Values=("binding:'<Super>t'" "command:'kitty'" "name:'kitty'")
     ensureDconfDirValues "$custom0Path" "${custom0Values[@]}"
     custom1Path='/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1/'
-    custom1Values=("binding:'<Primary>dead_grave'" "command:'tilix --quake'" "name:'tilix quake'")
+    custom1Values=("binding:'<Primary>escape'" "command:'tilix --quake'" "name:'tilix quake'")
     ensureDconfDirValues "$custom1Path" "${custom1Values[@]}"
-    custom2Path='/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2/'
-    custom2Values=("binding:'<Primary>escape'" "command:'tilix --quake'" "name:'tilix quake 2'")
-    ensureDconfDirValues "$custom2Path" "${custom2Values[@]}"
     # TODO: extract custom commands in a separate file to make it more generic
 }
 
