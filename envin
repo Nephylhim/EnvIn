@@ -427,6 +427,23 @@ ensureTilixConfiguration() {
     ensureDconfDirValues "$dtp" "${dtpv[@]}"
 }
 
+cleanDefaultMediaKeybindings() {
+    linfo "cleaning default media keybindings..."
+
+    for i in {1..9}; do
+        v="$(gsettings get org.gnome.shell.keybindings "switch-to-application-$i")"
+        if [[ $v != '[]' ]]; then
+            linfo "removing default keybinding for switch-to-application-$i"
+            gsettings set org.gnome.shell.keybindings "switch-to-application-$i" '[]'
+            lok "keybinding for switch-to-application-$i removed"
+        else
+            lok "keybinding for switch-to-application-$i already removed"
+        fi
+    done
+
+    lok "default media keybindings cleaned up"
+}
+
 ensureGnomeConfiguration() {
     # keyboard layouts
     inputsourcesPath='/org/gnome/desktop/input-sources/'
@@ -463,6 +480,8 @@ ensureGnomeConfiguration() {
     custom1Path='/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1/'
     custom1Values=("binding:'<Primary>escape'" "command:'tilix --quake'" "name:'tilix quake'")
     ensureDconfDirValues "$custom1Path" "${custom1Values[@]}"
+
+    cleanDefaultMediaKeybindings
     # TODO: extract custom commands in a separate file to make it more generic
 }
 
