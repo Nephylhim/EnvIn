@@ -13,7 +13,7 @@ EnvIn is my personal environment installer. It is a tool that I use to install a
 - VSCode extensions
 - dotfiles
 
-## Install/Use
+## Quick Install & Usage
 
 In a fresh environment:
 
@@ -41,3 +41,26 @@ EnvIn ensures that the packages, tools and binaries are installed, but doesn't t
 - You need to be root to run EnvIn, it currently cannot work if you don't have root rights in your machine
 - I'd prefer to use a toml configuration file instead of all these custom configuration files
 - Also I might rewrite this tool in a new language (a compiled one), but a lot of issues are keeping me from doing so at the time being
+## What and why?
+
+This tool is used to ensure that _my_ environment (and yours if you adapt it) is correcly installed on a given computer. I use multiple computers (for work and personnal use) and I like my tools, settings, configurations to be correctly set for each of them. Keeping track of the installations and updates of configurations is a tedious work and it doesn't have to be.
+
+So the main objective is to aggregate all important tools and configurations in a single repository and have a tool ensure all of these are correctly setup. This is this repository and the `envin` executable file.
+
+## How does it work?
+
+The tool use internal, hard written rules and configurations files to setup everything.
+
+The configuration files are:
+
+* packages.cfg
+	* debian packages names
+* brew_formulaes.cfg
+* cargo_bins.cfg
+* git_dirs.cfg
+* gnome_extensions.cfg
+* go_packages.cfg
+* pip_packages.cfg
+* vscode_extensions.cfg
+
+
