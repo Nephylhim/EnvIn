@@ -432,7 +432,7 @@ cleanDefaultMediaKeybindings() {
 
     for i in {1..9}; do
         v="$(gsettings get org.gnome.shell.keybindings "switch-to-application-$i")"
-        if [[ $v != '[]' ]]; then
+        if [[ $v != '@as []' ]]; then
             linfo "removing default keybinding for switch-to-application-$i"
             gsettings set org.gnome.shell.keybindings "switch-to-application-$i" '[]'
             lok "keybinding for switch-to-application-$i removed"
