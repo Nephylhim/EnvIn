@@ -1,6 +1,9 @@
 #!/bin/bash
 # shellcheck disable=SC2015,SC2016
 
+# ────────────────────────────────────────────────────────────────────────────────
+# Config
+
 ENVIN_HTTPS_REPOSITORY="https://github.com/Nephylhim/EnvIn.git"
 ENVIN_SSH_REPOSITORY="git@github.com:Nephylhim/EnvIn.git"
 ENVIN_DEFAULT_PATH="$HOME/.envin"
@@ -8,6 +11,9 @@ DOTFILES_REPOSITORY="Nephylhim/dotfiles"
 DOTFILES_SSH_REPOSITORY="git@github.com:Nephylhim/dotfiles.git"
 SOFT_INSTALL_DIR="$HOME/opt"
 ZSH=${ZSH:-/home/thomas/.oh-my-zsh}
+
+# ────────────────────────────────────────────────────────────────────────────────
+# Init / standard utils
 
 set -eo pipefail
 
@@ -41,6 +47,7 @@ ldebug() {
 }
 
 # ────────────────────────────────────────────────────────────────────────────────
+# Utils functions
 
 cmdExists() {
     command -v "$1" >/dev/null 2>&1
@@ -301,6 +308,7 @@ extract() {
 }
 
 # ────────────────────────────────────────────────────────────────────────────────
+# Controllers
 
 ensurePackages() {
     lines=()
@@ -784,6 +792,16 @@ ensureKittyInstalled() {
 }
 
 # ────────────────────────────────────────────────────────────────────────────────
+# Main function & main workflows
+
+cleanup() {
+    # WARN: exiting there
+    if [[ $? != 0 ]]; then
+        lfail "an error occured, aborting..."
+        exit 1
+    fi
+}
+trap cleanup 0
 
 init() {
     EnvInDirPath="$ENVIN_DEFAULT_PATH"
