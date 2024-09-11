@@ -5,7 +5,7 @@
 # Config
 
 ENVIN_HTTPS_REPOSITORY="https://github.com/Nephylhim/EnvIn.git"
-ENVIN_SSH_REPOSITORY="git@github.com:Nephylhim/EnvIn.git"
+ENVIN_SSH_REPOSITORY="git@githubp:Nephylhim/EnvIn.git"
 ENVIN_DEFAULT_PATH="$HOME/.envin"
 DOTFILES_REPOSITORY="Nephylhim/dotfiles"
 DOTFILES_SSH_REPOSITORY="git@github.com:Nephylhim/dotfiles.git"
@@ -826,9 +826,9 @@ full_install() {
     echo -e "\n─── ${BOLD}$(date --rfc-3339=second) - Shell ${NORM}─────────────────────────────────────────────"
     # fileExists "$HOME/.local/share/fonts/Droid Sans Mono Nerd Font Complete.otf" || installDSMNerdFont
     fileExists "$HOME/.local/share/fonts/Droid Sans Mono for Powerline Nerd Font Complete.otf" && lok "Nerd font already installed" || installDSMNerdFont
-    ensureDebPkg "tilix"
-    ensureTilixConfiguration
-    ensureKittyInstalled
+    # ensureDebPkg "tilix"
+    # ensureTilixConfiguration
+    # ensureKittyInstalled
     ensureDebPkg "zsh"
     dirExists "$HOME/.oh-my-zsh" && lok "oh-my-zsh installed" || installOhMyZSH
     # dirExists "$ZSH/custom/plugins/zsh-autosuggestions" && lok "oh-my-zsh installed" || installOMZAutoSuggest
@@ -838,16 +838,16 @@ full_install() {
     dot check && lok "dotfiles synced correctly" || linkDotfiles
 
     # Desktop Environment
-    echo -e "\n─── ${BOLD}$(date --rfc-3339=second) - Desktop environment ${NORM}───────────────────────────────"
-    dirExists "$HOME/.themes/Matcha-dark-azul" || installDesktopTheme
-    dirExists "$HOME/.local/share/icons/Zafiro-icons" || installIconTheme
-    ensureFontsInstalled
-    ensureGnomeStyle
-    ensureGnomeConfiguration
+    # echo -e "\n─── ${BOLD}$(date --rfc-3339=second) - Desktop environment ${NORM}───────────────────────────────"
+    # dirExists "$HOME/.themes/Matcha-dark-azul" || installDesktopTheme
+    # dirExists "$HOME/.local/share/icons/Zafiro-icons" || installIconTheme
+    # ensureFontsInstalled
+    # ensureGnomeStyle
+    # ensureGnomeConfiguration
 
     # Gnome Shell extensions
-    echo -e "\n─── ${BOLD}$(date --rfc-3339=second) - Gnome Shell extensions ${NORM}────────────────────────────"
-    test -d ./gnome-shell-extension-installer && ensureGnomeShellExtensions
+    # echo -e "\n─── ${BOLD}$(date --rfc-3339=second) - Gnome Shell extensions ${NORM}────────────────────────────"
+    # test -d ./gnome-shell-extension-installer && ensureGnomeShellExtensions
 
     # Config
     echo -e "\n─── ${BOLD}$(date --rfc-3339=second) - Configuration ${NORM}─────────────────────────────────────"
@@ -881,7 +881,7 @@ full_install() {
     echo -e "\n─── ${BOLD}$(date --rfc-3339=second) - Python3 - pip3 ${NORM}────────────────────────────────────"
     ensurePipPackages
 
-    apt show balena-etcher-electron >/dev/null 2>/dev/null && lok "etcher already installed" || installEtcher
+    # apt show balena-etcher-electron >/dev/null 2>/dev/null && lok "etcher already installed" || installEtcher
 
     # Git repos
     echo -e "\n─── ${BOLD}$(date --rfc-3339=second) - Git repositories ${NORM}──────────────────────────────────"
@@ -903,6 +903,17 @@ full_install() {
     # TODO: adapt for arch/manjaro
     # TODO: --no-graphic mode (no gnome / vscode setup) / profils
     # TODO: change arch to work with plugins?
+
+    # Windows
+    # TODO: VSCode conf files sync with dotfiles
+    # TODO: winget > install windows software
+    # install winget: powershell.exe Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
+    # powershell.exe winget install Eugeny.Tabby
+    # windows install fira code font
+    # TODO: auto config windows?
+    # tabby: /mnt/c/Users/thomas.coussot/AppData/Roaming/tabby/config.yaml
+    # sudo apt install wslu # (to get wslpath bin):
+    # wslpath "$(wslvar USERPROFILE)" # /mnt/c/Users/thomas.coussot
 }
 
 main() {
