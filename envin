@@ -909,6 +909,7 @@ full_install() {
     # TODO: winget > install windows software
     # install winget: powershell.exe Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
     # powershell.exe winget install Eugeny.Tabby
+    # powershell.exe winget install microsoft.PowerToys
     # windows install fira code font
     # TODO: auto config windows?
     # tabby: /mnt/c/Users/thomas.coussot/AppData/Roaming/tabby/config.yaml
